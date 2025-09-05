@@ -1,12 +1,11 @@
 // /netlify/functions/get-speech.js
 const textToSpeech = require('@google-cloud/text-to-speech');
 
-const client = new textToSpeech.TextToSpeechClient({
-    // Ta linijka jest niepotrzebna, jeśli klucz API jest poprawnie ustawiony 
-    // w zmiennych środowiskowych Netlify, biblioteka sama go znajdzie.
-    // Dla pewności zostawiamy ją, aby upewnić się, że jest używany.
-    key: process.env.GOOGLE_API_KEY
-});
+// Parsowanie danych logowania ze zmiennej środowiskowej
+const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+
+// Inicjalizacja klienta z danymi konta usługi (Service Account)
+const client = new textToSpeech.TextToSpeechClient({ credentials });
 
 exports.handler = async function(event) {
     if (event.httpMethod !== 'POST') {
@@ -30,7 +29,7 @@ exports.handler = async function(event) {
         };
 
         const [response] = await client.synthesizeSpeech(request);
-        
+
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },

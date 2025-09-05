@@ -1,7 +1,10 @@
-// Ścieżka: /netlify/functions/get-speech.js
+// /netlify/functions/get-speech.js
 const textToSpeech = require('@google-cloud/text-to-speech');
 
 const client = new textToSpeech.TextToSpeechClient({
+    // Ta linijka jest niepotrzebna, jeśli klucz API jest poprawnie ustawiony 
+    // w zmiennych środowiskowych Netlify, biblioteka sama go znajdzie.
+    // Dla pewności zostawiamy ją, aby upewnić się, że jest używany.
     key: process.env.GOOGLE_API_KEY
 });
 

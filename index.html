@@ -512,7 +512,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadWordsForActiveDeck();
         startSession();
     }
+    async function getDecksFromSupabase() {
+    // Pobierz dane aktualnie zalogowanego użytkownika
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        console.log("Nikt nie jest zalogowany, nie można pobrać talii.");
+        return []; // Zwróć pustą tablicę, jeśli nikt nie jest zalogowany
+    }
 
+    // Pobierz wszystkie talie z tabeli 'decks', które należą do tego użytkownika
+    const { data: decks, error } = await supabaseClient
+        .from('decks')
+        .select('*')
+        .eq('user_id', user.id); // Filtruj tylko te, gdzie user_id pasuje
+
+    if (error) {
+        console.error('Błąd podczas pobierania talii:', error);
+        return []; // Zwróć pustą tablicę w razie błędu
+    }
+
+    return decks;
+}
     async function showDeckDetails(deck) {
         deckDetailsView.classList.remove('hidden');
         deckDetailsName.textContent = deck.name;
@@ -1130,23 +1150,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    async function renderDecksList(decks) {
-        decksListEl.innerHTML = '';
-        if (!decks || decks.length === 0) {
-            decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">No decks found. Create one to start.</p>';
-            return;
-        }
-        for (const deck of decks) {
-            const wordStore = getTransaction('words');
-            const index = wordStore.index('deckId');
-            const count = await idbRequest(index.count(deck.id));
-            const deckEl = document.createElement('div');
-            deckEl.className = `flex justify-between items-center p-3 hover:bg-slate-100 rounded-lg cursor-pointer ${deck.id === activeDeckId ? 'bg-sky-100 font-bold' : ''}`;
-            deckEl.innerHTML = `<div>${deck.name} <span class="font-normal text-slate-500 text-sm">(${count} words)</span></div>`;
-            deckEl.addEventListener('click', () => setActiveDeck(deck.id));
-            decksListEl.appendChild(deckEl);
-        }
+async function renderDecksList() {
+    decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Ładowanie talii...</p>'; // Pokaż komunikat o ładowaniu
+    const decks = await getDecksFromSupabase(); // Użyj naszej nowej funkcji!
+
+    decksListEl.innerHTML = ''; // Wyczyść listę
+    if (!decks || decks.length === 0) {
+        decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Nie znaleziono żadnych talii. Stwórz nową, aby zacząć.</p>';
+        return;
     }
+
+    for (const deck of decks) {
+        // Na razie nie liczymy słówek, więc wpiszemy 0
+        const count = 0; 
+        const deckEl = document.createElement('div');
+        deckEl.className = `flex justify-between items-center p-3 hover:bg-slate-100 rounded-lg cursor-pointer ${deck.id === activeDeckId ? 'bg-sky-100 font-bold' : ''}`;
+        deckEl.innerHTML = `<div>${deck.name} <span class="font-normal text-slate-500 text-sm">(${count} words)</span></div>`;
+        deckEl.addEventListener('click', () => setActiveDeck(deck.id));
+        decksListEl.appendChild(deckEl);
+    }
+}
 
     // --- INITIALIZATION ---
     async function init(isReset = false) {

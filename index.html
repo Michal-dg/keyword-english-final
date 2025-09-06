@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Keyword: Master English</title>
+     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/dist/output.css" rel="stylesheet">
     
     <script src="words_db_en.js"></script>
     <script src="stories_db_en.js"></script>
@@ -329,7 +331,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // --- SUPABASE & APP CONFIGURATION ---
     const SUPABASE_URL = 'https://elneujplpdoruvrvzvzd.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbmV1anBscGRvcnV2cnZ6dnpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MDQ3NjYsImV4cCI6MjA3MjM4MDc2Nn0.YIJYmt8KeiXH0iFS_Pk6ErIkyKZpPDsi29G83VItjCc';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbmV1anBscGRvcnV2cnZ6dnpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MDQ3NjYsImV4cCI6MjA3MjM4MDc2Nn0.YIJYmt8KeiXH0iFS_Pk6ErIkyKZpPDsi2G83VItjCc';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log('Supabase client initialized successfully.');
 
@@ -501,18 +503,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function getAppData(key) { const store = getTransaction('app_data'); const result = await idbRequest(store.get(key)); return result ? result.value : undefined; }
     async function setAppData(key, value) { const store = getTransaction('app_data', 'readwrite'); store.put({ key, value }); }
 
-    // --- DECK MANAGEMENT ---
-    async function setActiveDeck(deckId) {
-        activeDeckId = deckId;
-        await setAppData('activeDeckId', deckId);
-        const store = getTransaction('decks');
-        const deck = await idbRequest(store.get(deckId));
-        activeDeckNameEl.textContent = deck ? deck.name : 'None';
-        closeModal(decksModal);
-        await loadWordsForActiveDeck();
-        startSession();
-    }
-    async function getDecksFromSupabase() {
+// NOWA FUNKCJA DO POBIERANIA TALII Z SUPABASE
+async function getDecksFromSupabase() {
     // Pobierz dane aktualnie zalogowanego użytkownika
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -688,12 +680,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
-    showDecksBtn.addEventListener('click', async () => {
-        deckDetailsView.classList.add('hidden');
-        const decks = await idbRequest(getTransaction('decks').getAll()); 
-        renderDecksList(decks);
-        openModal(decksModal);
-    });
+showDecksBtn.addEventListener('click', async () => {
+    deckDetailsView.classList.add('hidden');
+    renderDecksList(); // <-- TAK POWINNO WYGLĄDAĆ PO ZMIANIE
+    openModal(decksModal);
+});
+
 
     showLearnedWordsBtn.addEventListener('click', async () => {
         learnedWordsList.innerHTML = '';
@@ -1133,22 +1125,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        const isLoggedIn = session && session.user;
-        authIconUser.classList.toggle('hidden', isLoggedIn);
-        authIconLogout.classList.toggle('hidden', !isLoggedIn);
-        
-        if (isLoggedIn) {
-            userInfo.classList.remove('hidden');
-            userEmailDisplay.textContent = session.user.email;
-            console.log("User logged in:", session.user.email);
-            const decks = await idbRequest(getTransaction('decks').getAll()); 
-            renderDecksList(decks);
-        } else {
-            userInfo.classList.add('hidden');
-            console.log("User logged out.");
-            decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Log in to see your decks.</p>';
-        }
-    });
+    const isLoggedIn = session && session.user;
+    authIconUser.classList.toggle('hidden', isLoggedIn);
+    authIconLogout.classList.toggle('hidden', !isLoggedIn);
+    
+    if (isLoggedIn) {
+        userInfo.classList.remove('hidden');
+        userEmailDisplay.textContent = session.user.email;
+        console.log("User logged in:", session.user.email);
+        // ZMIANA: Wywołujemy nową funkcję renderDecksList bez argumentów
+        renderDecksList();
+    } else {
+        userInfo.classList.add('hidden');
+        console.log("User logged out.");
+        decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Zaloguj się, aby zobaczyć swoje talie.</p>';
+    }
+});
+
     
 async function renderDecksList() {
     decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Ładowanie talii...</p>'; // Pokaż komunikat o ładowaniu
@@ -1170,7 +1163,6 @@ async function renderDecksList() {
         decksListEl.appendChild(deckEl);
     }
 }
-
     // --- INITIALIZATION ---
     async function init(isReset = false) {
         db = await openDB();

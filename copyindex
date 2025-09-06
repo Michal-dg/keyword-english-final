@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <!-- ZMIANA 1: Tytuł i metadane -->
     <title>Keyword: Master English</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/dist/output.css" rel="stylesheet">
     
-    <!-- ZMIANA 2: Nowe pliki z danymi -->
     <script src="words_db_en.js"></script>
     <script src="stories_db_en.js"></script>
     
@@ -36,7 +34,6 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 flex items-center justify-center min-h-screen">
-    <!-- Inputs for file uploads remain unchanged functionally -->
     <input type="file" id="image-upload-input" class="hidden" accept="image/*">
     <input type="file" id="header-upload-input" class="hidden" accept="image/*">
     <input type="file" id="story-upload-input" class="hidden" accept=".txt">
@@ -44,7 +41,6 @@
     <input type="file" id="story-bg-upload-input" class="hidden" accept="image/*">
 
     <div id="app" class="w-full max-w-md mx-auto p-4 sm:p-6">
-        <!-- ZMIANA 3: Tłumaczenie interfejsu HTML -->
         <header class="text-center mb-4">
             <div id="header-image-container" class="relative w-full aspect-[3.5/1] bg-slate-200 rounded-lg mb-4 overflow-hidden group">
                 <img id="header-image" src="images/default-header.jpg" alt="Header" class="w-full h-full object-cover">
@@ -171,7 +167,6 @@
         </footer>
     </div>
     
-    <!-- MODALS -->
     <div id="decks-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none">
         <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col transform scale-95">
             <header class="flex justify-between items-center p-4 border-b">
@@ -303,11 +298,12 @@
             <form id="auth-form" class="space-y-4">
                 <div>
                     <label for="auth-email" class="block text-sm font-medium text-slate-700">Email</label>
-                    <input type="email" id="auth-email" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                    <input type="email" id="auth-email" required autocomplete="email" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+
                 </div>
                 <div>
                     <label for="auth-password" class="block text-sm font-medium text-slate-700">Password</label>
-                    <input type="password" id="auth-password" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
+                    <input type="password" id="auth-password" required autocomplete="current-password" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500">
                 </div>
                 <div id="auth-error-message" class="text-red-500 text-sm hidden"></div>
                 <div class="flex gap-4">
@@ -334,7 +330,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // --- SUPABASE & APP CONFIGURATION ---
     const SUPABASE_URL = 'https://elneujplpdoruvrvzvzd.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbmV1anBscGRvcnV2cnZ6dnpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MDQ3NjYsImV4cCI6MjA3MjM4MDc2Nn0.YIJYmt8KeiXH0iFS_Pk6ErIkyKZpPDsi29G83VItjCc';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbmV1anBscGRvcnV2cnZ6dnpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MDQ3NjYsImV4cCI6MjA3MjM4MDc2Nn0.YIJYmt8KeiXH0iFS_Pk6ErIkyKZpPDsi2G83VItjCc';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log('Supabase client initialized successfully.');
 
@@ -458,14 +454,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userEmailDisplay = document.getElementById('user-email-display');
     const authIconUser = document.getElementById('auth-icon-user');
     const authIconLogout = document.getElementById('auth-icon-logout');
-    
+    const authForm = document.getElementById('auth-form'); // POPRAWKA: Dodano brakującą deklarację
+
     // --- APP STATE ---
-    const synth = window.speechSynthesis; // <-- OTO POPRAWNA DEKLARACJA, NA SAMEJ GÓRZE SEKCJI
+    const synth = window.speechSynthesis;
     let words = [];
     let newQueue = [];
     let reviewQueue = [];
     let currentCard = null;
-    // USUNĘLIŚMY STĄD 'let synth'
     let statsChart = null;
     let globalFlashcardBg = null;
     let activeDeckId = null;
@@ -476,50 +472,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     let testScore = 0;
      
     // --- SPEECH SYNTHESIS ---
-    // STARA WERSJA FUNKCJI - ZNAJDŹ JĄ I ZAZNACZ
-async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
-    if (!text) { if (onEndCallback) onEndCallback(); return; }
-    if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; }
-    if (synth.speaking) synth.cancel();
+    async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
+        if (!text) { if (onEndCallback) onEndCallback(); return; }
+        if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; }
+        if (synth.speaking) synth.cancel();
 
-    // The Netlify function should be configured to handle different language codes.
-    try {
-        const response = await fetch('/.netlify/functions/get-speech', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang, rate })
-        });
-        const data = await response.json();
-        if (response.ok && data.audioContent) {
-            currentAudio = new Audio("data:audio/mp3;base64," + data.audioContent);
-            currentAudio.play();
-            currentAudio.onended = () => { if (onEndCallback) onEndCallback(); currentAudio = null; };
-        } else {
-            console.error('Error from speech function:', data);
+        try {
+            const response = await fetch('/.netlify/functions/get-speech', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, lang, rate })
+            });
+            const data = await response.json();
+            if (response.ok && data.audioContent) {
+                currentAudio = new Audio("data:audio/mp3;base64," + data.audioContent);
+                currentAudio.play();
+                currentAudio.onended = () => { if (onEndCallback) onEndCallback(); currentAudio = null; };
+            } else {
+                console.error('Error from speech function:', data);
+                if (onEndCallback) onEndCallback();
+            }
+        } catch (error) {
+            console.error('Error connecting to speech function:', error);
             if (onEndCallback) onEndCallback();
         }
-    } catch (error) {
-        console.error('Error connecting to speech function:', error);
-        if (onEndCallback) onEndCallback();
     }
-}
 
     // --- DATA MANAGEMENT (APP DATA) ---
     async function getAppData(key) { const store = getTransaction('app_data'); const result = await idbRequest(store.get(key)); return result ? result.value : undefined; }
     async function setAppData(key, value) { const store = getTransaction('app_data', 'readwrite'); store.put({ key, value }); }
 
-    // --- DECK MANAGEMENT ---
-    async function setActiveDeck(deckId) {
-        activeDeckId = deckId;
-        await setAppData('activeDeckId', deckId);
-        const store = getTransaction('decks');
-        const deck = await idbRequest(store.get(deckId));
-        activeDeckNameEl.textContent = deck ? deck.name : 'None';
-        closeModal(decksModal);
-        await loadWordsForActiveDeck();
-        startSession();
+// NOWA FUNKCJA DO POBIERANIA TALII Z SUPABASE
+async function getDecksFromSupabase() {
+    // Pobierz dane aktualnie zalogowanego użytkownika
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        console.log("Nikt nie jest zalogowany, nie można pobrać talii.");
+        return []; // Zwróć pustą tablicę, jeśli nikt nie jest zalogowany
     }
 
+    // Pobierz wszystkie talie z tabeli 'decks', które należą do tego użytkownika
+    const { data: decks, error } = await supabaseClient
+        .from('decks')
+        .select('*')
+        .eq('user_id', user.id); // Filtruj tylko te, gdzie user_id pasuje
+
+    if (error) {
+        console.error('Błąd podczas pobierania talii:', error);
+        return []; // Zwróć pustą tablicę w razie błędu
+    }
+
+    return decks;
+}
     async function showDeckDetails(deck) {
         deckDetailsView.classList.remove('hidden');
         deckDetailsName.textContent = deck.name;
@@ -675,12 +679,12 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
         });
     });
     
-    showDecksBtn.addEventListener('click', async () => {
-        deckDetailsView.classList.add('hidden');
-        const decks = await idbRequest(getTransaction('decks').getAll()); 
-        renderDecksList(decks);
-        openModal(decksModal);
-    });
+showDecksBtn.addEventListener('click', async () => {
+    deckDetailsView.classList.add('hidden');
+    renderDecksList(); // <-- TAK POWINNO WYGLĄDAĆ PO ZMIANIE
+    openModal(decksModal);
+});
+
 
     showLearnedWordsBtn.addEventListener('click', async () => {
         learnedWordsList.innerHTML = '';
@@ -910,16 +914,10 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
     document.getElementById('back-to-main-menu-btn').addEventListener('click', startSession);
 
     // --- STORY & FILE UPLOAD LOGIC ---
-    // ===================================================================================
-// START: Wklej ten blok kodu
-// ===================================================================================
-
-    // --- STORY & FILE UPLOAD LOGIC ---
     let storySentences = [];
     let currentSentenceIndex = 0;
     let isStoryPlaying = false;
 
-    // Funkcja odtwarzająca następne zdanie
     function playNextSentence() {
         if (!isStoryPlaying || currentSentenceIndex >= storySentences.length) {
             isStoryPlaying = false;
@@ -929,7 +927,6 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
         }
         const sentence = storySentences[currentSentenceIndex].trim();
         if (sentence) {
-            // Używamy języka angielskiego do odczytu historii
             speak(sentence, 'en-US', storySpeechRate, () => {
                 currentSentenceIndex++;
                 playNextSentence();
@@ -940,35 +937,32 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
         }
     }
     
-    // GŁÓWNY EVENT LISTENER DLA PRZYCISKU "STORY LIBRARY"
     showStoriesBtn.addEventListener('click', async () => { 
         const store = getTransaction('user_stories');
         const stories = await idbRequest(store.getAll());
-        storiesListEl.innerHTML = ''; // Wyczyść listę przed renderowaniem
+        storiesListEl.innerHTML = ''; 
 
-        if (stories.length === 0 && typeof initialStoryList !== 'undefined' && initialStoryList.length > 0) {
-             // Jeśli baza jest pusta, ale mamy historie startowe, pokaż je
-            initialStoryList.forEach(story => renderStoryItem(story));
-        } else if (stories.length === 0) {
-            // Jeśli nie ma żadnych historii
+        const allStories = [...initialStoryList.map(s => ({...s, isDefault: true})), ...stories];
+        const uniqueStories = allStories.filter((story, index, self) => 
+            index === self.findIndex((s) => s.title === story.title)
+        );
+
+        if (uniqueStories.length === 0) {
             storiesListEl.innerHTML = `<p class="text-center text-slate-500 p-8">Your library is empty. Add your first story from a .txt file.</p>`;
         } else {
-            // Renderuj historie z bazy danych
-            stories.forEach(story => renderStoryItem(story));
+            uniqueStories.forEach(story => renderStoryItem(story));
         }
         openModal(storiesModal); 
     });
 
-    // Funkcja pomocnicza do renderowania pojedynczej historii na liście
     function renderStoryItem(story) {
         const storyEl = document.createElement('div');
         storyEl.className = 'flex justify-between items-center p-3 hover:bg-slate-100 rounded-lg cursor-pointer';
         storyEl.innerHTML = `
             <p class="truncate pr-4">${story.title}</p>
-            ${story.id ? `<button data-id="${story.id}" class="delete-story-btn text-slate-400 hover:text-red-500 transition-colors flex-shrink-0">&times;</button>` : ''}
+            ${!story.isDefault ? `<button data-id="${story.id}" class="delete-story-btn text-slate-400 hover:text-red-500 transition-colors flex-shrink-0">&times;</button>` : ''}
         `;
 
-        // Kliknięcie na historię otwiera ją w czytniku
         storyEl.addEventListener('click', (e) => {
             if (!e.target.closest('.delete-story-btn')) {
                 storyViewerTitle.textContent = story.title;
@@ -978,25 +972,22 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
             }
         });
 
-        // Obsługa przycisku usuwania
         const deleteBtn = storyEl.querySelector('.delete-story-btn');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 if (confirm(`Are you sure you want to delete "${story.title}"?`)) {
                     const store = getTransaction('user_stories', 'readwrite');
-                    await idbRequest(store.delete(parseInt(e.target.dataset.id)));
-                    showStoriesBtn.click(); // Odśwież listę, symulując ponowne kliknięcie
+                    await idbRequest(store.delete(parseInt(e.target.dataset.id, 10)));
+                    showStoriesBtn.click();
                 }
             });
         }
         storiesListEl.appendChild(storyEl);
     }
 
-    // Listener dla przycisku "Add New" w oknie historii
     addStoryBtn.addEventListener('click', () => storyUploadInput.click());
 
-    // Listener dla wgrywania pliku .txt z historią
     storyUploadInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file && file.name.endsWith('.txt')) {
@@ -1004,14 +995,13 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
             reader.onload = async (e) => {
                 const store = getTransaction('user_stories', 'readwrite');
                 await idbRequest(store.add({ title: file.name, content: e.target.result }));
-                showStoriesBtn.click(); // Odśwież listę, aby pokazać nową historię
+                showStoriesBtn.click();
             };
             reader.readAsText(file);
         }
-        event.target.value = ''; // Reset inputu, aby można było wgrać ten sam plik ponownie
+        event.target.value = '';
     });
 
-    // Listener dla przycisku odtwarzania całej historii
     listenFullStoryBtn.addEventListener('click', () => {
         const playIcon = listenFullStoryBtn.querySelector('.play-icon');
         const stopIcon = listenFullStoryBtn.querySelector('.stop-icon');
@@ -1034,16 +1024,60 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
             }
         }
     });
-
-    // Pozostałe listenery związane z plikami (bez zmian)
+    
     addImageBtn.addEventListener('click', () => { if (currentCard) imageUploadInput.click(); });
+    imageUploadInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && currentCard) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                currentCard.image = event.target.result;
+                const store = getTransaction('words', 'readwrite');
+                store.put(currentCard);
+                updateCardUI();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
     uploadHeaderBtn.addEventListener('click', () => headerUploadInput.click());
+    headerUploadInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                headerImageEl.src = event.target.result;
+                setAppData('headerImage', event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
     uploadGlobalBgBtn.addEventListener('click', () => globalBgUploadInput.click());
+    globalBgUploadInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                globalFlashcardBg = event.target.result;
+                cardFrontBgEl.src = globalFlashcardBg;
+                setAppData('globalFlashcardBg', globalFlashcardBg);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
     uploadStoryBgBtn.addEventListener('click', () => storyBgUploadInput.click());
+    storyBgUploadInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                storyViewerBgContainer.style.backgroundImage = `url(${event.target.result})`;
+                setAppData('storyBg', event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
     speedSlider.addEventListener('input', (e) => { storySpeechRate = parseFloat(e.target.value); });
-// ===================================================================================
-// END: Tutaj kończy się blok do wklejenia
-// ===================================================================================
 
     // --- AUTHENTICATION LOGIC (SUPABASE) ---
     showAuthBtn.addEventListener('click', () => {
@@ -1090,41 +1124,44 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
     });
 
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        const isLoggedIn = session && session.user;
-        authIconUser.classList.toggle('hidden', isLoggedIn);
-        authIconLogout.classList.toggle('hidden', !isLoggedIn);
-        
-        if (isLoggedIn) {
-            userInfo.classList.remove('hidden');
-            userEmailDisplay.textContent = session.user.email;
-            console.log("User logged in:", session.user.email);
-            const decks = await idbRequest(getTransaction('decks').getAll()); 
-            renderDecksList(decks);
-        } else {
-            userInfo.classList.add('hidden');
-            console.log("User logged out.");
-            decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Log in to see your decks.</p>';
-        }
-    });
+    const isLoggedIn = session && session.user;
+    authIconUser.classList.toggle('hidden', isLoggedIn);
+    authIconLogout.classList.toggle('hidden', !isLoggedIn);
     
-    async function renderDecksList(decks) {
-        decksListEl.innerHTML = '';
-        if (!decks || decks.length === 0) {
-            decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">No decks found. Create one to start.</p>';
-            return;
-        }
-        for (const deck of decks) {
-            const wordStore = getTransaction('words');
-            const index = wordStore.index('deckId');
-            const count = await idbRequest(index.count(deck.id));
-            const deckEl = document.createElement('div');
-            deckEl.className = `flex justify-between items-center p-3 hover:bg-slate-100 rounded-lg cursor-pointer ${deck.id === activeDeckId ? 'bg-sky-100 font-bold' : ''}`;
-            deckEl.innerHTML = `<div>${deck.name} <span class="font-normal text-slate-500 text-sm">(${count} words)</span></div>`;
-            deckEl.addEventListener('click', () => setActiveDeck(deck.id));
-            decksListEl.appendChild(deckEl);
-        }
+    if (isLoggedIn) {
+        userInfo.classList.remove('hidden');
+        userEmailDisplay.textContent = session.user.email;
+        console.log("User logged in:", session.user.email);
+        // ZMIANA: Wywołujemy nową funkcję renderDecksList bez argumentów
+        renderDecksList();
+    } else {
+        userInfo.classList.add('hidden');
+        console.log("User logged out.");
+        decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Zaloguj się, aby zobaczyć swoje talie.</p>';
+    }
+});
+
+    
+async function renderDecksList() {
+    decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Ładowanie talii...</p>'; // Pokaż komunikat o ładowaniu
+    const decks = await getDecksFromSupabase(); // Użyj naszej nowej funkcji!
+
+    decksListEl.innerHTML = ''; // Wyczyść listę
+    if (!decks || decks.length === 0) {
+        decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Nie znaleziono żadnych talii. Stwórz nową, aby zacząć.</p>';
+        return;
     }
 
+    for (const deck of decks) {
+        // Na razie nie liczymy słówek, więc wpiszemy 0
+        const count = 0; 
+        const deckEl = document.createElement('div');
+        deckEl.className = `flex justify-between items-center p-3 hover:bg-slate-100 rounded-lg cursor-pointer ${deck.id === activeDeckId ? 'bg-sky-100 font-bold' : ''}`;
+        deckEl.innerHTML = `<div>${deck.name} <span class="font-normal text-slate-500 text-sm">(${count} words)</span></div>`;
+        deckEl.addEventListener('click', () => setActiveDeck(deck.id));
+        decksListEl.appendChild(deckEl);
+    }
+}
     // --- INITIALIZATION ---
     async function init(isReset = false) {
         db = await openDB();
@@ -1180,7 +1217,6 @@ async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
 });
     </script>
     <script>
-        // Service worker registration (no change needed)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')

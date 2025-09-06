@@ -837,35 +837,47 @@ showDecksBtn.addEventListener('click', async () => {
     showReviewBtn.addEventListener('click', () => openModal(reviewModal));
 
     openAddWordModalBtn.addEventListener('click', async () => {
-        const store = getTransaction('decks');
-        const selectedDeck = await idbRequest(store.get(activeDeckId));
-        if (selectedDeck) {
-            addWordDeckName.textContent = selectedDeck.name;
-            closeModal(decksModal);
-            openModal(addWordModal);
-        } else { alert("First, select a deck."); }
-    });
+    if (!activeDeckId) {
+        alert("Najpierw wybierz talię.");
+        return;
+    }
+    addWordDeckName.textContent = activeDeckNameEl.textContent || 'Deck';
+    closeModal(decksModal);
+    openModal(addWordModal);
+});
             
     addDeckForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const deckNameInput = document.getElementById('new-deck-name');
-        const deckName = deckNameInput.value.trim();
-        if (deckName) {
-            try {
-                const store = getTransaction('decks', 'readwrite');
-                await idbRequest(store.add({ name: deckName }));
-                const decks = await idbRequest(getTransaction('decks').getAll());
-                renderDecksList(decks);
-                deckNameInput.value = '';
-            } catch (error) {
-                if (error.name === 'ConstraintError') {
-                    alert('A deck with that name already exists.');
-                } else {
-                    alert('Could not add the new deck.');
-                }
-            }
+    e.preventDefault();
+    const deckNameInput = document.getElementById('new-deck-name');
+    const deckName = deckNameInput.value.trim();
+    if (!deckName) return;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            // Tworzymy talię w Supabase
+            const { data, error } = await supabaseClient
+                .from('decks')
+                .insert({ name: deckName, user_id: user.id })
+                .select('id, name')
+                .single();
+            if (error) throw error;
+
+            // Mirror do IndexedDB
+            await ensureLocalDeckRecord(data.id, data.name);
+        } else {
+            // Lokalna talia w IndexedDB
+            const store = getTransaction('decks', 'readwrite');
+            await idbRequest(store.add({ name: deckName }));
         }
-    });
+
+        deckNameInput.value = '';
+        await renderDecksList();
+    } catch (error) {
+        console.error(error);
+        alert('Nie udało się dodać talii.');
+    }
+});
     
     addWordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1259,28 +1271,92 @@ showDecksBtn.addEventListener('click', async () => {
         decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Zaloguj się, aby zobaczyć swoje talie.</p>';
     }
 });
-
-    
-async function renderDecksList() {
-    decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Ładowanie talii...</p>'; // Pokaż komunikat o ładowaniu
-    const decks = await getDecksFromSupabase(); // Użyj naszej nowej funkcji!
-
-    decksListEl.innerHTML = ''; // Wyczyść listę
-    if (!decks || decks.length === 0) {
-        decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Nie znaleziono żadnych talii. Stwórz nową, aby zacząć.</p>';
-        return;
-    }
-
-    for (const deck of decks) {
-        // Na razie nie liczymy słówek, więc wpiszemy 0
-        const count = 0; 
-        const deckEl = document.createElement('div');
-        deckEl.className = `flex justify-between items-center p-3 hover:bg-slate-100 rounded-lg cursor-pointer ${deck.id === activeDeckId ? 'bg-sky-100 font-bold' : ''}`;
-        deckEl.innerHTML = `<div>${deck.name} <span class="font-normal text-slate-500 text-sm">(${count} words)</span></div>`;
-        deckEl.addEventListener('click', () => setActiveDeck(deck.id, deck.name));
-        decksListEl.appendChild(deckEl);
-    }
+async function getLocalDecks() {
+  const decks = await idbRequest(getTransaction('decks').getAll());
+  return (decks || []).map(d => ({ id: d.id, name: d.name, source: 'local' }));
 }
+
+async function getUnifiedDecks() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  let cloudDecks = [];
+  if (user) {
+    const { data, error } = await supabaseClient
+      .from('decks')
+      .select('id, name')
+      .eq('user_id', user.id)
+      .order('name', { ascending: true });
+    if (!error && Array.isArray(data)) {
+      cloudDecks = data.map(d => ({ id: d.id, name: d.name, source: 'cloud' }));
+      // mirror do lokalnej bazy (jeśli się uda)
+      for (const d of data) {
+        try { await ensureLocalDeckRecord(d.id, d.name); } catch (_) {}
+      }
+    }
+  }
+  const localDecks = await getLocalDecks();
+  // scal – pokazujemy wszystkie (nawet jeśli nazwy się dublują), ale nie dublujemy po id
+  const merged = [
+    ...cloudDecks,
+    ...localDecks.filter(ld => !cloudDecks.some(cd => cd.id === ld.id))
+  ];
+  return merged;
+}
+
+async function renderDecksList() {
+  decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Ładowanie talii...</p>';
+
+  const decks = await getUnifiedDecks();
+  decksListEl.innerHTML = '';
+
+  if (!decks || decks.length === 0) {
+    decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Brak talii. Utwórz nową poniżej.</p>';
+    return;
+  }
+
+  const wordsIndex = getTransaction('words').index('deckId');
+
+  for (const deck of decks) {
+    let count = 0;
+    try {
+      const wordsInThisDeck = await idbRequest(wordsIndex.getAll(deck.id));
+      count = wordsInThisDeck?.length || 0;
+    } catch (_) {}
+
+    const isActive = deck.id === activeDeckId;
+
+    const deckEl = document.createElement('div');
+    deckEl.className = `flex items-center justify-between p-3 hover:bg-slate-100 rounded-lg cursor-pointer ${isActive ? 'bg-sky-100 font-bold' : ''}`;
+
+    deckEl.innerHTML = `
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="truncate">${deck.name}</span>
+          <span class="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${deck.source === 'cloud' ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'}">
+            ${deck.source}
+          </span>
+        </div>
+        <div class="text-xs text-slate-500">${count} words</div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button class="add-words-btn text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded">+ Words</button>
+      </div>
+    `;
+
+    deckEl.addEventListener('click', () => setActiveDeck(deck.id, deck.name));
+
+    const addBtn = deckEl.querySelector('.add-words-btn');
+    addBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await setActiveDeck(deck.id, deck.name);
+      addWordDeckName.textContent = deck.name;
+      closeModal(decksModal);
+      openModal(addWordModal);
+    });
+
+    decksListEl.appendChild(deckEl);
+  }
+}
+    
     // --- INITIALIZATION ---
     async function init(isReset = false) {
         db = await openDB();

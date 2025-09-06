@@ -687,108 +687,103 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- WORD MANAGEMENT & SRS LOGIC ---
 async function loadWordsForActiveDeck() {
-        // Krok 1: Wczytujemy "czystą" listę słówek z lokalnej bazy (bez zmian)
-        if (activeDeckId) {
-          const wordStore = getTransaction('words');
-          const index = wordStore.index('deckId');
-          words = await idbRequest(index.getAll(activeDeckId));
-        } else {
-          words = [];
-        }
+    if (activeDeckId) {
+        const wordStore = getTransaction('words');
+        const index = wordStore.index('deckId');
+        words = await idbRequest(index.getAll(activeDeckId));
+    } else {
+        words = [];
+    }
 
-        // Krok 2: NOWA CZĘŚĆ - Sprawdzamy, czy użytkownik jest zalogowany
-        const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data } = await supabaseClient.auth.getUser();
+    const user = data?.user;
 
-        // Jeśli tak, pobieramy jego postępy z Supabase i łączymy z lokalnymi danymi
-        if (user && words.length > 0) {
-          try {
+    if (user && words.length > 0) {
+        try {
             const { data: progressRecords, error } = await supabaseClient
-              .from('user_word_progress')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('deck_id', activeDeckId);
+                .from('user_word_progress')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('deck_id', activeDeckId);
 
             if (error) {
-              console.error('Error fetching user progress:', error);
-              // W razie błędu sieci, kontynuujemy z danymi lokalnymi
+                console.error('Error fetching user progress:', error);
             } else if (progressRecords) {
-              // Tworzymy mapę dla szybkiego dostępu do postępów
-              const progressMap = new Map(progressRecords.map(p => [p.word_id, p]));
+                // ZMIANA: Tworzymy mapę używając 'word_english' jako klucza
+                const progressMap = new Map(progressRecords.map(p => [p.word_english, p]));
 
-              // Nakładamy postępy z chmury na lokalne słówka
-              words.forEach(word => {
-                if (progressMap.has(word.id)) {
-                  const progress = progressMap.get(word.id);
-                  word.interval = progress.interval;
-                  word.easeFactor = progress.ease_factor;
-                  word.nextReview = progress.next_review;
-                  word.learnedDate = progress.learned_date;
-                }
-              });
-              console.log(`Merged ${progressMap.size} progress records from cloud.`);
+                words.forEach(word => {
+                    // ZMIANA: Sprawdzamy postęp po 'word.english'
+                    if (progressMap.has(word.english)) {
+                        const progress = progressMap.get(word.english);
+                        word.interval = progress.interval;
+                        word.easeFactor = progress.ease_factor;
+                        word.nextReview = progress.next_review;
+                        word.learnedDate = progress.learned_date;
+                    }
+                });
+                console.log(`Merged ${progressMap.size} progress records from cloud.`);
             }
-          } catch (e) {
+        } catch (e) {
             console.error('Network or other error fetching progress:', e);
-          }
         }
-        
-        // Krok 3: Aktualizujemy liczniki (bez zmian)
-        updateLearnedCount();
-      }
+    }
+    
+    updateLearnedCount();
+}
 
 async function processAnswer(difficulty) {
-        if (!currentCard) return;
+    if (!currentCard) return;
 
-        // Krok 1: Logika SRS pozostaje bez zmian
-        if (difficulty === 1) {
-          currentCard.interval = 0;
-          reviewQueue.unshift(currentCard);
-        } else {
-          currentCard.isLearning = false;
-          currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
-          if (!currentCard.learnedDate) {
+    if (difficulty === 1) {
+        currentCard.interval = 0;
+        reviewQueue.unshift(currentCard);
+    } else {
+        currentCard.isLearning = false;
+        currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
+        if (!currentCard.learnedDate) {
             currentCard.learnedDate = getToday().toISOString();
             updateLearnedCount();
-          }
-          currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
         }
-        currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval)).toISOString();
+        currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
+    }
+    currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval)).toISOString();
 
-        // Krok 2: Zapisujemy postęp lokalnie w IndexedDB (tak jak wcześniej)
-        const wordStore = getTransaction('words', 'readwrite');
-        wordStore.put(currentCard);
+    const wordStore = getTransaction('words', 'readwrite');
+    wordStore.put(currentCard);
 
-        // Krok 3: NOWA CZĘŚĆ - Zapisujemy postęp w Supabase, jeśli użytkownik jest zalogowany
-        const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data } = await supabaseClient.auth.getUser();
+    const user = data?.user;
 
-        if (user) {
-          const progressData = {
+    if (user) {
+        const progressData = {
             user_id: user.id,
-            word_id: currentCard.id,
+            // ZMIANA: Używamy 'english' jako identyfikatora
+            word_english: currentCard.english,
             deck_id: currentCard.deckId,
             interval: currentCard.interval,
             ease_factor: currentCard.easeFactor,
             next_review: currentCard.nextReview,
             learned_date: currentCard.learnedDate
-          };
+        };
 
-          try {
-            // Używamy 'upsert', aby stworzyć nowy wpis lub zaktualizować istniejący
+        try {
+            // ZMIANA: Aktualizujemy 'onConflict' na nowy unikalny klucz
             const { error } = await supabaseClient
-              .from('user_word_progress')
-              .upsert(progressData, { onConflict: 'user_id, word_id' });
+                .from('user_word_progress')
+                .upsert(progressData, { onConflict: 'user_id, word_english' });
 
             if (error) {
-              console.error('Error saving progress to Supabase:', error);
+                console.error('Error saving progress to Supabase:', error);
             }
-          } catch (e) {
+        } catch (e) {
             console.error('Network or other error saving progress:', e);
-          }
         }
+    }
 
-        // Krok 4: Przechodzimy do następnej karty (bez zmian)
-        nextCard();
-      }
+    nextCard();
+}
+
 
   // --- UI FLOW & CARD DISPLAY ---
   function updateLearnedCount() {

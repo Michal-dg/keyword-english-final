@@ -697,59 +697,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateLearnedCount();
   }
 
-async function processAnswer(difficulty) {
-        if (!currentCard) return;
-
-        // Krok 1: Logika SRS pozostaje bez zmian
-        if (difficulty === 1) {
-          currentCard.interval = 0;
-          reviewQueue.unshift(currentCard);
-        } else {
-          currentCard.isLearning = false;
-          currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
-          if (!currentCard.learnedDate) {
-            currentCard.learnedDate = getToday().toISOString();
-            updateLearnedCount();
-          }
-          currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
-        }
-        currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval)).toISOString();
-
-        // Krok 2: Zapisujemy postęp lokalnie w IndexedDB (tak jak wcześniej)
-        const wordStore = getTransaction('words', 'readwrite');
-        wordStore.put(currentCard);
-
-        // Krok 3: NOWA CZĘŚĆ - Zapisujemy postęp w Supabase, jeśli użytkownik jest zalogowany
-        const { data: { user } } = await supabaseClient.auth.getUser();
-
-        if (user) {
-          const progressData = {
-            user_id: user.id,
-            word_id: currentCard.id,
-            deck_id: currentCard.deckId,
-            interval: currentCard.interval,
-            ease_factor: currentCard.easeFactor,
-            next_review: currentCard.nextReview,
-            learned_date: currentCard.learnedDate
-          };
-
-          try {
-            // Używamy 'upsert', aby stworzyć nowy wpis lub zaktualizować istniejący
-            const { error } = await supabaseClient
-              .from('user_word_progress')
-              .upsert(progressData, { onConflict: 'user_id, word_id' });
-
-            if (error) {
-              console.error('Error saving progress to Supabase:', error);
-            }
-          } catch (e) {
-            console.error('Network or other error saving progress:', e);
-          }
-        }
-
-        // Krok 4: Przechodzimy do następnej karty (bez zmian)
-        nextCard();
+  async function processAnswer(difficulty) {
+    if (!currentCard) return;
+    if (difficulty === 1) {
+      currentCard.interval = 0;
+      reviewQueue.unshift(currentCard);
+    } else {
+      currentCard.isLearning = false;
+      currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
+      if (!currentCard.learnedDate) {
+        currentCard.learnedDate = getToday().toISOString();
+        updateLearnedCount();
       }
+      currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
+    }
+    currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval)).toISOString();
+    const wordStore = getTransaction('words', 'readwrite');
+    wordStore.put(currentCard);
+    nextCard();
+  }
 
   // --- UI FLOW & CARD DISPLAY ---
   function updateLearnedCount() {

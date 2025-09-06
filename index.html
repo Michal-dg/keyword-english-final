@@ -686,16 +686,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // --- WORD MANAGEMENT & SRS LOGIC ---
-  async function loadWordsForActiveDeck() {
-    if (activeDeckId) {
-      const wordStore = getTransaction('words');
-      const index = wordStore.index('deckId');
-      words = await idbRequest(index.getAll(activeDeckId));
-    } else {
-      words = [];
-    }
-    updateLearnedCount();
-  }
+async function loadWordsForActiveDeck() {
+        // Krok 1: Wczytujemy "czystą" listę słówek z lokalnej bazy (bez zmian)
+        if (activeDeckId) {
+          const wordStore = getTransaction('words');
+          const index = wordStore.index('deckId');
+          words = await idbRequest(index.getAll(activeDeckId));
+        } else {
+          words = [];
+        }
+
+        // Krok 2: NOWA CZĘŚĆ - Sprawdzamy, czy użytkownik jest zalogowany
+        const { data: { user } } = await supabaseClient.auth.getUser();
+
+        // Jeśli tak, pobieramy jego postępy z Supabase i łączymy z lokalnymi danymi
+        if (user && words.length > 0) {
+          try {
+            const { data: progressRecords, error } = await supabaseClient
+              .from('user_word_progress')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('deck_id', activeDeckId);
+
+            if (error) {
+              console.error('Error fetching user progress:', error);
+              // W razie błędu sieci, kontynuujemy z danymi lokalnymi
+            } else if (progressRecords) {
+              // Tworzymy mapę dla szybkiego dostępu do postępów
+              const progressMap = new Map(progressRecords.map(p => [p.word_id, p]));
+
+              // Nakładamy postępy z chmury na lokalne słówka
+              words.forEach(word => {
+                if (progressMap.has(word.id)) {
+                  const progress = progressMap.get(word.id);
+                  word.interval = progress.interval;
+                  word.easeFactor = progress.ease_factor;
+                  word.nextReview = progress.next_review;
+                  word.learnedDate = progress.learned_date;
+                }
+              });
+              console.log(`Merged ${progressMap.size} progress records from cloud.`);
+            }
+          } catch (e) {
+            console.error('Network or other error fetching progress:', e);
+          }
+        }
+        
+        // Krok 3: Aktualizujemy liczniki (bez zmian)
+        updateLearnedCount();
+      }
 
 async function processAnswer(difficulty) {
         if (!currentCard) return;

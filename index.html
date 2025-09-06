@@ -471,22 +471,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentTestQuestionIndex = 0;
     let testScore = 0;
      
-    // --- Active deck helpers ---
-async function ensureLocalDeckRecord(id, name) {
-  try {
-    const store = getTransaction('decks');
-    const existing = await idbRequest(store.get(id));
-    if (!existing) {
-      const rw = getTransaction('decks', 'readwrite');
-      rw.put({ id, name });
-    } else if (name && existing.name !== name) {
-      const rw = getTransaction('decks', 'readwrite');
-      rw.put({ ...existing, name });
-    }
-  } catch (e) {
-    console.warn('ensureLocalDeckRecord error:', e);
-  }
-}
 // --- Active deck helpers ---
 async function ensureLocalDeckRecord(id, name) {
   try {
@@ -508,47 +492,6 @@ async function ensureLocalDeckRecord(id, name) {
   }
 }
 
-async function resolveDeckName(deckId) {
-  const local = await idbRequest(getTransaction('decks').get(deckId));
-  if (local?.name) return local.name;
-
-  try {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-      const { data, error } = await supabaseClient
-        .from('decks')
-        .select('name')
-        .eq('id', deckId)
-        .single();
-      if (!error && data?.name) {
-        await ensureLocalDeckRecord(deckId, data.name);
-        return data.name;
-      }
-    }
-  } catch (_) {}
-  return 'Deck';
-}
-
-async function setActiveDeck(deckId, deckNameFromClick = null) {
-  activeDeckId = deckId;
-  await setAppData('activeDeckId', deckId);
-
-  if (deckNameFromClick) {
-    activeDeckNameEl.textContent = deckNameFromClick;
-    await ensureLocalDeckRecord(deckId, deckNameFromClick);
-  } else {
-    const name = await resolveDeckName(deckId);
-    activeDeckNameEl.textContent = name;
-  }
-
-  await loadWordsForActiveDeck();
-  startSession();
-
-  // odśwież listę w modalu, żeby zaznaczyć aktywną talię
-  if (!decksModal.classList.contains('opacity-0')) {
-    renderDecksList();
-  }
-}
 async function resolveDeckName(deckId) {
   const local = await idbRequest(getTransaction('decks').get(deckId));
   if (local?.name) return local.name;

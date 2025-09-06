@@ -333,7 +333,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsbmV1anBscGRvcnV2cnZ6dnpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MDQ3NjYsImV4cCI6MjA3MjM4MDc2Nn0.YIJYmt8KeiXH0iFS_Pk6ErIkyKZpPDsi29G83VItjCc';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log('Supabase client initialized successfully.');
+    // 1) Funkcja do obsługi powrotu z maila
+async function handleAuthRedirectFromEmail() {
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+  if (!hash) return;
+  const params = new URLSearchParams(hash);
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
 
+  if (access_token && refresh_token) {
+    const { error } = await supabaseClient.auth.setSession({ access_token, refresh_token });
+    if (error) {
+      console.error('Error setting session from URL hash:', error);
+    } else {
+      console.log('Session restored from email link.');
+      history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+}
     const NEW_WORDS_PER_DAY = 10;
     
     if (typeof initialWordList === 'undefined') {
@@ -377,7 +394,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- DATE HELPERS ---
     const getToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
     const addDays = (date, days) => { const r = new Date(date); r.setDate(r.getDate() + days); return r; };
-    const formatDate = (date) => date.toLocaleDateString('en-US');
+    const formatDate = (date) => date.toLocaleDateString('en-GB');
 
     // --- DOM ELEMENTS ---
     const loadingState = document.getElementById('loading-state');
@@ -534,7 +551,7 @@ async function setActiveDeck(deckId, deckNameFromClick = null) {
   }
 }
     // --- SPEECH SYNTHESIS ---
-    async function speak(text, lang = 'en-US', rate = 1.0, onEndCallback) {
+    async function speak(text, lang = 'en-GB', rate = 1.0, onEndCallback) {
         if (!text) { if (onEndCallback) onEndCallback(); return; }
         if (currentAudio && !currentAudio.paused) { currentAudio.pause(); currentAudio = null; }
         if (synth.speaking) synth.cancel();
@@ -564,28 +581,6 @@ async function setActiveDeck(deckId, deckNameFromClick = null) {
     async function getAppData(key) { const store = getTransaction('app_data'); const result = await idbRequest(store.get(key)); return result ? result.value : undefined; }
     async function setAppData(key, value) { const store = getTransaction('app_data', 'readwrite'); store.put({ key, value }); }
 
-// NOWA FUNKCJA DO POBIERANIA TALII Z SUPABASE
-async function getDecksFromSupabase() {
-    // Pobierz dane aktualnie zalogowanego użytkownika
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-        console.log("Nikt nie jest zalogowany, nie można pobrać talii.");
-        return []; // Zwróć pustą tablicę, jeśli nikt nie jest zalogowany
-    }
-
-    // Pobierz wszystkie talie z tabeli 'decks', które należą do tego użytkownika
-    const { data: decks, error } = await supabaseClient
-        .from('decks')
-        .select('*')
-        .eq('user_id', user.id); // Filtruj tylko te, gdzie user_id pasuje
-
-    if (error) {
-        console.error('Błąd podczas pobierania talii:', error);
-        return []; // Zwróć pustą tablicę w razie błędu
-    }
-
-    return decks;
-}
     async function showDeckDetails(deck) {
         deckDetailsView.classList.remove('hidden');
         deckDetailsName.textContent = deck.name;
@@ -681,7 +676,7 @@ async function getDecksFromSupabase() {
         cardExamplePlEl.textContent = currentCard.example_pl;
         cardImageEl.src = currentCard.image || "";
         cardImageEl.style.display = currentCard.image ? 'block' : 'none';
-        setTimeout(() => speak(currentCard.english, 'en-US', 1.0), 200);
+        setTimeout(() => speak(currentCard.english, 'en-GB', 1.0), 200);
     }
 
     function updateCounts() {
@@ -832,8 +827,22 @@ showDecksBtn.addEventListener('click', async () => {
         for (const line of lines) {
             const parts = line.split(';').map(part => part.trim());
             if (parts.length !== 4) {
-                alert(`Incorrect format on line: "${line}". Use 'english;polish;english sentence;polish sentence'.`);
-                return;
+                const parts = line.split(';').map(p => p.trim());
+if (parts.length !== 2 && parts.length !== 4) {
+  alert(`Nieprawidłowy format: "${line}". Użyj "ang;pl" albo "ang;pl;przykład_en;przykład_pl".`);
+  return;
+}
+const [english, polish, example_en = '', example_pl = ''] = parts;
+newWords.push({
+  deckId: activeDeckId,
+  english, polish, example_en, example_pl,
+  interval: 0,
+  nextReview: getToday().toISOString(),
+  easeFactor: 2.5,
+  isLearning: false,
+  learnedDate: null,
+  image: null
+});
             }
             const [english, polish, example_en, example_pl] = parts;
             newWords.push({ deckId: activeDeckId, english, polish, example_en, example_pl, interval: 0, nextReview: getToday().toISOString(), easeFactor: 2.5, isLearning: false, learnedDate: null, image: null });
@@ -855,7 +864,7 @@ showDecksBtn.addEventListener('click', async () => {
         flashcard.classList.add('is-flipped');
         showAnswerBtn.classList.add('hidden');
         difficultyButtons.classList.remove('hidden');
-        if(currentCard) setTimeout(() => speak(currentCard.example_en, 'en-US', 1.0), 400);
+        if(currentCard) setTimeout(() => speak(currentCard.example_en, 'en-GB', 1.0), 400);
     });
 
     difficultyButtons.addEventListener('click', (e) => {
@@ -865,8 +874,8 @@ showDecksBtn.addEventListener('click', async () => {
         }
     });
 
-    speakBtnFront.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.english, 'en-US', 1.0); });
-    speakBtnBack.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.example_en, 'en-US', 1.0); });
+    speakBtnFront.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.english, 'en-GB', 1.0); });
+    speakBtnBack.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.example_en, 'en-GB', 1.0); });
     
     startNewSessionEarlyBtn.addEventListener('click', async () => {
         const tomorrow = addDays(getToday(), 1);
@@ -1001,7 +1010,7 @@ showDecksBtn.addEventListener('click', async () => {
         }
         const sentence = storySentences[currentSentenceIndex].trim();
         if (sentence) {
-            speak(sentence, 'en-US', storySpeechRate, () => {
+            speak(sentence, 'en-GB', storySpeechRate, () => {
                 currentSentenceIndex++;
                 playNextSentence();
             });
@@ -1178,19 +1187,32 @@ showDecksBtn.addEventListener('click', async () => {
     });
 
     registerBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
-        const { error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) {
-            authErrorMessage.textContent = error.message;
-            authErrorMessage.classList.remove('hidden');
-        } else {
-            authForm.classList.add('hidden');
-            authErrorMessage.classList.add('hidden');
-            authSuccessMessage.classList.remove('hidden');
-        }
-    });
+  e.preventDefault();
+  authErrorMessage.classList.add('hidden');
+
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/#auth-callback` // UWAGA: backticki
+      // Alternatywnie na sztywno:
+      // emailRedirectTo: 'https://ienglish.netlify.app/#auth-callback'
+    }
+  });
+
+  if (error) {
+    authErrorMessage.textContent = error.message;
+    authErrorMessage.classList.remove('hidden');
+    return;
+  }
+
+  // Przy wymaganym potwierdzeniu e-maila session będzie null – pokazujemy komunikat
+  authForm.classList.add('hidden');
+  authSuccessMessage.classList.remove('hidden');
+});
 
     logoutBtn.addEventListener('click', async () => {
         await supabaseClient.auth.signOut();
@@ -1214,6 +1236,10 @@ showDecksBtn.addEventListener('click', async () => {
         decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Zaloguj się, aby zobaczyć swoje talie.</p>';
     }
 });
+// 2) Wywołaj po podpięciu onAuthStateChange, przed init()
+await handleAuthRedirectFromEmail();
+
+init();
 async function getLocalDecks() {
   const decks = await idbRequest(getTransaction('decks').getAll());
   return (decks || []).map(d => ({ id: d.id, name: d.name, source: 'local' }));
@@ -1285,7 +1311,10 @@ async function renderDecksList() {
       </div>
     `;
 
-    deckEl.addEventListener('click', () => setActiveDeck(deck.id, deck.name));
+    deckEl.addEventListener('click', async () => {
+  closeModal(decksModal);              // zamknij okno od razu
+  await setActiveDeck(deck.id, deck.name); // przełącz aktywną talię i odpal sesję
+});
 
     const addBtn = deckEl.querySelector('.add-words-btn');
     addBtn.addEventListener('click', async (e) => {
@@ -1351,7 +1380,6 @@ async function renderDecksList() {
         await setActiveDeck(currentDeckId);
     }
     
-    init();
 });
     </script>
     <script>

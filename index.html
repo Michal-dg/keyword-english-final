@@ -89,14 +89,13 @@
         <p class="text-slate-500">Loading application and database...</p>
       </div>
 
-     <div id="summary-state" class="hidden text-center bg-white p-8 rounded-2xl shadow-lg">
-      <h2 class="text-2xl font-bold mb-4">Great work!</h2>
-      <p class="text-slate-600 mb-6">Masz świetną passę. Tak trzymaj!</p>
-      <div class="flex flex-col gap-3">
-        <button id="start-new-session-early" ...> ... </button>
-        <button id="repeat-today-btn" ...> ... </button>
+      <div id="summary-state" class="hidden text-center bg-white p-8 rounded-2xl shadow-lg">
+        <h2 class="text-2xl font-bold mb-4">Great work!</h2>
+        <p class="text-slate-600 mb-6">Masz świetną passę. Tak trzymaj!</p>
+        <button id="start-new-session-early" class="w-full bg-sky-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-sky-600 transition-colors">
+          Keep going!
+        </button>
       </div>
-    </div>
 
       <div id="learning-state" class="hidden">
         <div class="flex justify-between items-center mb-4 text-sm">
@@ -207,7 +206,7 @@
 
   <!-- Learned words modal -->
   <div id="learned-words-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none">
-    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col transform scale-95">
+    <div class="modal-content bg-white rounded-2xl shadow-xl w-full max-w-lg max-height-[90vh] flex flex-col transform scale-95">
       <header class="flex justify-between items-center p-4 border-b">
         <h2 class="text-xl font-bold">Learned Words (<span id="learned-words-count">0</span>)</h2>
         <button class="close-modal-btn p-2 text-2xl text-slate-400 hover:text-slate-800">&times;</button>
@@ -295,23 +294,26 @@
       <div class="p-6 space-y-4">
         <div class="p-4 border rounded-lg">
           <h3 class="font-semibold mb-2">Last 20 learned words</h3>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button class="review-btn-learn flex-1 bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-sky-600" data-type="last" data-count="20">Normal Study</button>
-            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="last" data-count="20">Test</button>
+            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="last" data-count="20" data-direction="en2pl">Test EN→PL</button>
+            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="last" data-count="20" data-direction="pl2en">Test PL→EN</button>
           </div>
         </div>
         <div class="p-4 border rounded-lg">
           <h3 class="font-semibold mb-2">Last 50 learned words</h3>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button class="review-btn-learn flex-1 bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-sky-600" data-type="last" data-count="50">Normal Study</button>
-            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="last" data-count="50">Test</button>
+            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="last" data-count="50" data-direction="en2pl">Test EN→PL</button>
+            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="last" data-count="50" data-direction="pl2en">Test PL→EN</button>
           </div>
         </div>
         <div class="p-4 border rounded-lg">
           <h3 class="font-semibold mb-2">Words learned today</h3>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button class="review-btn-learn flex-1 bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-sky-600" data-type="today">Normal Study</button>
-            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="today">Test</button>
+            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="today" data-direction="en2pl">Test EN→PL</button>
+            <button class="review-btn-test flex-1 bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300" data-type="today" data-direction="pl2en">Test PL→EN</button>
           </div>
         </div>
       </div>
@@ -351,8 +353,8 @@
           <p>We've sent a confirmation link to your email. Check your inbox to complete the registration.</p>
         </div>
         <div id="auth-login-success" class="hidden mt-4 p-2 bg-green-100 text-green-700 rounded text-center text-sm">
-  Logged in successfully.
-</div>
+          Logged in successfully.
+        </div>
         <div id="user-info" class="hidden mt-4 text-center">
           <p>Logged in as: <strong id="user-email-display"></strong></p>
           <button id="logout-btn" class="mt-4 w-full bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 transition-colors">Logout</button>
@@ -363,7 +365,7 @@
 
   <script>
 // ===================================================================================
-// KEYWORD APP - FULL SCRIPT (ENGLISH VERSION) - POPRAWIONA WERSJA
+// KEYWORD APP - FULL SCRIPT (ENGLISH VERSION) - UPDATED
 // ===================================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -411,26 +413,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     history.replaceState({}, document.title, window.location.pathname);
   }
 // --- APP STATE ---
-  // ... (istniejące zmienne)
 
   // NOWA FUNKCJA DO ODŚWIEŻANIA STANU APLIKACJI
   async function reinitializeAppState() {
     console.log('App is visible again. Re-initializing state...');
     try {
-      // 1. Ponownie otwórz i zweryfikuj połączenie z IndexedDB
       db = await openDB();
       console.log('IndexedDB connection re-established.');
 
-      // 2. Załaduj ponownie słowa dla aktywnej talii, aby upewnić się, że dane są świeże
       if (activeDeckId) {
         await loadWordsForActiveDeck();
       }
 
-      // 3. Zrestartuj sesję nauki (to odświeży interfejs i naprawi przyciski)
-      // Ta funkcja już obsługuje przypadki, gdy nie ma słów do nauki.
       startSession();
       
-      // 4. Odśwież UI związane z logowaniem
       const { data: { session } } = await supabaseClient.auth.getSession();
       const isLoggedIn = !!(session && session.user);
       authIconUser.classList.toggle('hidden', isLoggedIn);
@@ -439,7 +435,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('State re-initialization complete.');
     } catch (error) {
       console.error('Failed to re-initialize app state:', error);
-      // Pokaż użytkownikowi komunikat o błędzie, jeśli coś pójdzie nie tak
       loadingState.innerHTML = '<p class="text-red-500">Wystąpił błąd podczas wznawiania aplikacji. Odśwież stronę.</p>';
       loadingState.classList.remove('hidden');
       learningState.classList.add('hidden');
@@ -595,6 +590,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentTestQuestionIndex = 0;
   let testScore = 0;
   let sessionWordCounter = 0;
+  let sessionCompleted = false; // flaga do kontroli stanu sesji (koniec/przerwa)
+  let testDirection = 'en2pl'; // en2pl | pl2en
 
   // --- Active deck helpers ---
   async function ensureLocalDeckRecord(id, name) {
@@ -721,74 +718,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // --- WORD MANAGEMENT & SRS LOGIC ---
-async function loadWordsForActiveDeck() {
+  async function loadWordsForActiveDeck() {
     if (activeDeckId) {
-        const wordStore = getTransaction('words');
-        const index = wordStore.index('deckId');
-        words = await idbRequest(index.getAll(activeDeckId));
+      const wordStore = getTransaction('words');
+      const index = wordStore.index('deckId');
+      words = await idbRequest(index.getAll(activeDeckId));
     } else {
-        words = [];
+      words = [];
     }
 
     const { data } = await supabaseClient.auth.getUser();
     const user = data?.user;
 
     if (user && words.length > 0) {
-        try {
-            const { data: progressRecords, error } = await supabaseClient
-                .from('user_word_progress')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('deck_id', activeDeckId);
+      try {
+        const { data: progressRecords, error } = await supabaseClient
+          .from('user_word_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('deck_id', activeDeckId);
 
-            if (error) {
-                console.error('Error fetching user progress:', error);
-            } else if (progressRecords) {
-                // ZMIANA: Tworzymy mapę używając 'word_english' jako klucza
-                const progressMap = new Map(progressRecords.map(p => [p.word_english, p]));
-
-                words.forEach(word => {
-                    // ZMIANA: Sprawdzamy postęp po 'word.english'
-                    if (progressMap.has(word.english)) {
-                        const progress = progressMap.get(word.english);
-                        word.interval = progress.interval;
-                        word.easeFactor = progress.ease_factor;
-                        word.nextReview = progress.next_review;
-                        word.learnedDate = progress.learned_date;
-                    }
-                });
-                console.log(`Merged ${progressMap.size} progress records from cloud.`);
+        if (error) {
+          console.error('Error fetching user progress:', error);
+        } else if (progressRecords) {
+          const progressMap = new Map(progressRecords.map(p => [p.word_english, p]));
+          words.forEach(word => {
+            if (progressMap.has(word.english)) {
+              const progress = progressMap.get(word.english);
+              word.interval = progress.interval;
+              word.easeFactor = progress.ease_factor;
+              word.nextReview = progress.next_review;
+              word.learnedDate = progress.learned_date;
             }
-        } catch (e) {
-            console.error('Network or other error fetching progress:', e);
+          });
+          console.log(`Merged ${progressMap.size} progress records from cloud.`);
         }
+      } catch (e) {
+        console.error('Network or other error fetching progress:', e);
+      }
     }
-     // --- POCZĄTEK ZMIAN ---
-    sessionWordCounter++; // Zwiększamy licznik po każdej odpowiedzi
-
-    // Sprawdzamy, czy licznik osiągnął 15 (lub wielokrotność) i czy są jeszcze słówka w kolejce
-    if (sessionWordCounter > 0 && sessionWordCounter % 15 === 0 && (newQueue.length > 0 || reviewQueue.length > 0)) {
-      showSummary(); // Pokaż ekran przerwy
-    } else {
-      nextCard(); // Przejdź do następnej karty
-    }
-    // --- KONIEC ZMIAN ---
   }
 
-async function processAnswer(difficulty) {
+  async function processAnswer(difficulty) {
     if (!currentCard) return;
 
     if (difficulty === 1) {
-        currentCard.interval = 0;
-        reviewQueue.unshift(currentCard);
+      currentCard.interval = 0;
+      reviewQueue.unshift(currentCard);
     } else {
-        currentCard.isLearning = false;
-        currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
-        if (!currentCard.learnedDate) {
-            currentCard.learnedDate = getToday().toISOString();
-            updateLearnedCount();
-        }
-        currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
+      currentCard.isLearning = false;
+      currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
+      if (!currentCard.learnedDate) {
+        currentCard.learnedDate = getToday().toISOString();
+        updateLearnedCount();
+      }
+      currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
     }
     currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval)).toISOString();
 
@@ -799,34 +783,37 @@ async function processAnswer(difficulty) {
     const user = data?.user;
 
     if (user) {
-        const progressData = {
-            user_id: user.id,
-            // ZMIANA: Używamy 'english' jako identyfikatora
-            word_english: currentCard.english,
-            deck_id: currentCard.deckId,
-            interval: currentCard.interval,
-            ease_factor: currentCard.easeFactor,
-            next_review: currentCard.nextReview,
-            learned_date: currentCard.learnedDate
-        };
+      const progressData = {
+        user_id: user.id,
+        word_english: currentCard.english,
+        deck_id: currentCard.deckId,
+        interval: currentCard.interval,
+        ease_factor: currentCard.easeFactor,
+        next_review: currentCard.nextReview,
+        learned_date: currentCard.learnedDate
+      };
 
-        try {
-            // ZMIANA: Aktualizujemy 'onConflict' na nowy unikalny klucz
-            const { error } = await supabaseClient
-                .from('user_word_progress')
-                .upsert(progressData, { onConflict: 'user_id, word_english' });
+      try {
+        const { error } = await supabaseClient
+          .from('user_word_progress')
+          .upsert(progressData, { onConflict: 'user_id, word_english' });
 
-            if (error) {
-                console.error('Error saving progress to Supabase:', error);
-            }
-        } catch (e) {
-            console.error('Network or other error saving progress:', e);
+        if (error) {
+          console.error('Error saving progress to Supabase:', error);
         }
+      } catch (e) {
+        console.error('Network or other error saving progress:', e);
+      }
     }
 
-    nextCard();
-}
-
+    // Krótka przerwa co 15 odpowiedzi (nie jest to limit dzienny)
+    sessionWordCounter++;
+    if (sessionWordCounter > 0 && sessionWordCounter % 200 === 0 && (newQueue.length > 0 || reviewQueue.length > 0)) {
+      showSummary();
+    } else {
+      nextCard();
+    }
+  }
 
   // --- UI FLOW & CARD DISPLAY ---
   function updateLearnedCount() {
@@ -836,14 +823,17 @@ async function processAnswer(difficulty) {
 
   function buildQueues(reviewWords = null) {
     if (reviewWords) {
+      // Tryb przeglądu: wszystkie podane słowa jako kolejka "review"
       newQueue = [];
       reviewQueue = reviewWords.sort(() => Math.random() - 0.5);
     } else {
       const today = getToday();
       const unlearnedWords = words.filter(w => !w.isLearning && w.interval === 0);
-const dueForReview = words.filter(w => w.interval > 0 && new Date(w.nextReview) <= today);
-newQueue = unlearnedWords; // Usunięcie limitu - dodajemy wszystkie dostępne nowe słówka
-reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
+      const dueForReview = words.filter(w => w.interval > 0 && new Date(w.nextReview) <= today);
+
+      // Brak limitu dziennego na nowe słowa – wrzucamy wszystkie dostępne
+      newQueue = unlearnedWords;
+      reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
     }
   }
 
@@ -880,7 +870,6 @@ reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
     cardExamplePlEl.textContent = currentCard.example_pl;
     cardImageEl.src = currentCard.image || "";
     cardImageEl.style.display = currentCard.image ? 'block' : 'none';
-    // setTimeout(() => speak(currentCard.english, ENGLISH_ACCENT, 1.0), 200);
   }
 
   function updateCounts() {
@@ -890,32 +879,35 @@ reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
     reviewCountEl.textContent = reviewQueue.length + reviewCurrent;
   }
 
+  // Jedyna definicja showSummary – z nową logiką i tekstami
   function showSummary() {
     learningState.classList.add('hidden');
     testState.classList.add('hidden');
     testSummaryState.classList.add('hidden');
     summaryState.classList.remove('hidden');
 
-    // NOWA INTELIGENTNA LOGIKA: Sprawdzamy, czy to przerwa, czy koniec sesji
     const cardsRemaining = newQueue.length > 0 || reviewQueue.length > 0;
     const summaryText = document.querySelector('#summary-state p');
     const keepGoingBtn = document.getElementById('start-new-session-early');
 
     if (cardsRemaining) {
-      // Jeśli są jeszcze karty - to jest tylko przerwa motywacyjna
+      // Przerwa motywacyjna
       summaryText.textContent = "Masz świetną passę. Tak trzymaj!";
       keepGoingBtn.textContent = "Keep going!";
       keepGoingBtn.disabled = false;
+      sessionCompleted = false;
     } else {
-      // Jeśli nie ma już kart - to jest prawdziwy koniec sesji
-      summaryText.textContent = "Gratulacje! Ukończyłeś wszystkie dostępne fiszki na dziś.";
-      keepGoingBtn.textContent = "Wszystko na dziś!";
-      keepGoingBtn.disabled = true; // Wyłączamy przycisk, aby zapobiec pętli
+      // Koniec sesji – cała talia „na dziś” skończona, ale pozwalamy zacząć od nowa
+      summaryText.textContent = "Gratulacje! Ukończyłeś całą talię:)";
+      keepGoingBtn.textContent = "Start again.";
+      keepGoingBtn.disabled = false; // przycisk aktywny
+      sessionCompleted = true;
     }
   }
 
-    function startSession(reviewWords = null) {
+  function startSession(reviewWords = null) {
     sessionWordCounter = 0;
+    sessionCompleted = false;
     learningState.classList.remove('hidden');
     testState.classList.add('hidden');
     testSummaryState.classList.add('hidden');
@@ -947,25 +939,20 @@ reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
   }
 
   document.querySelectorAll('.modal').forEach(modal => {
-    // Nasłuchiwanie na kliknięcie w tło modala (to jest OK)
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             if (modal === storyViewerModal && currentAudio) { currentAudio.pause(); currentAudio = null; }
             closeModal(modal);
         }
     });
-
-    // Znajdź przycisk zamykania
     const closeButton = modal.querySelector('.close-modal-btn');
-
-    // SPRAWDŹ, CZY PRZYCISK ISTNIEJE, ZANIM DODASZ LISTENER
     if (closeButton) {
         closeButton.addEventListener('click', () => {
             if (modal === storyViewerModal && currentAudio) { currentAudio.pause(); currentAudio = null; }
             closeModal(modal);
         });
     }
-});
+  });
 
   showDecksBtn.addEventListener('click', async () => {
     try {
@@ -993,29 +980,7 @@ reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
     learnedWordsCountEl.textContent = learned.length;
     openModal(learnedWordsModal);
   });
-function showSummary() {
-    learningState.classList.add('hidden');
-    testState.classList.add('hidden');
-    testSummaryState.classList.add('hidden');
-    summaryState.classList.remove('hidden');
 
-    // NOWA INTELIGENTNA LOGIKA: Sprawdzamy, czy to przerwa, czy koniec sesji
-    const cardsRemaining = newQueue.length > 0 || reviewQueue.length > 0;
-    const summaryText = document.querySelector('#summary-state p');
-    const keepGoingBtn = document.getElementById('start-new-session-early');
-
-    if (cardsRemaining) {
-      // Jeśli są jeszcze karty - to jest tylko przerwa motywacyjna
-      summaryText.textContent = "Masz świetną passę. Tak trzymaj!";
-      keepGoingBtn.textContent = "Keep going!";
-      keepGoingBtn.disabled = false;
-    } else {
-      // Jeśli nie ma już kart - to jest prawdziwy koniec sesji
-      summaryText.textContent = "Gratulacje! Ukończyłeś wszystkie dostępne fiszki na dziś.";
-      keepGoingBtn.textContent = "Wszystko na dziś!";
-      keepGoingBtn.disabled = true; // Wyłączamy przycisk, aby zapobiec pętli
-    }
-  }
   showStatsBtn.addEventListener('click', async () => {
     const allWords = await idbRequest(getTransaction('words').getAll());
     const learnedByDay = allWords.filter(w => w.learnedDate).reduce((acc, word) => {
@@ -1140,10 +1105,19 @@ function showSummary() {
   speakBtnFront.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.english, ENGLISH_ACCENT, 1.0); });
   speakBtnBack.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.example_en, ENGLISH_ACCENT, 1.0); });
 
- startNewSessionEarlyBtn.addEventListener('click', () => {
-    summaryState.classList.add('hidden'); // Ukryj ekran przerwy
-    learningState.classList.remove('hidden'); // Pokaż ekran nauki
-    nextCard(); // Załaduj kolejną fiszkę
+  // Start again / Keep going logika
+  startNewSessionEarlyBtn.addEventListener('click', () => {
+    if (sessionCompleted) {
+      // Restart całej talii: ponowna sesja z całą talią w trybie "review"
+      // (ignoruje limity dzienne – przegląd wszystkich fiszek)
+      summaryState.classList.add('hidden');
+      startSession(words);
+    } else {
+      // Kontynuacja po przerwie
+      summaryState.classList.add('hidden');
+      learningState.classList.remove('hidden');
+      nextCard();
+    }
   });
 
   resetProgressBtn.addEventListener('click', async () => {
@@ -1155,6 +1129,7 @@ function showSummary() {
     }
   });
 
+  // Review/Test przyciski – z kierunkiem testu
   document.querySelectorAll('.review-btn-learn, .review-btn-test').forEach(btn => {
     btn.addEventListener('click', async () => {
       const type = btn.dataset.type;
@@ -1174,6 +1149,7 @@ function showSummary() {
       }
       closeModal(reviewModal);
       if (isTest) {
+        testDirection = btn.dataset.direction || 'en2pl';
         testWords = wordsToReview;
         startTest();
       } else {
@@ -1201,9 +1177,13 @@ function showSummary() {
     document.getElementById('test-total-questions').textContent = testWords.length;
     document.getElementById('test-next-btn').classList.add('hidden');
     const currentWord = testWords[currentTestQuestionIndex];
-    document.getElementById('test-question').textContent = currentWord.english;
     const answersEl = document.getElementById('test-answers');
     answersEl.innerHTML = '';
+
+    // Pytanie zależnie od kierunku
+    document.getElementById('test-question').textContent = (testDirection === 'pl2en') ? currentWord.polish : currentWord.english;
+
+    // Opcje odpowiedzi – mieszamy
     const otherWords = words.filter(w => w.id !== currentWord.id);
     let options = [currentWord];
     while (options.length < 4 && otherWords.length > 0) {
@@ -1211,10 +1191,11 @@ function showSummary() {
       options.push(otherWords.splice(randomIndex, 1)[0]);
     }
     options.sort(() => Math.random() - 0.5);
+
     options.forEach(option => {
       const button = document.createElement('button');
       button.className = "p-3 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors";
-      button.textContent = option.polish;
+      button.textContent = (testDirection === 'pl2en') ? option.english : option.polish;
       const isCorrect = option.id === currentWord.id;
       button.onclick = () => checkTestAnswer(isCorrect, button, options.map(o => o.id === currentWord.id));
       answersEl.appendChild(button);
@@ -1584,21 +1565,20 @@ function showSummary() {
     ];
     return merged;
   }
-async function renameDeck(deckId, oldName) {
+
+  async function renameDeck(deckId, oldName) {
     const newName = prompt('Enter the new name for the deck:', oldName);
     if (!newName || newName.trim() === '' || newName === oldName) {
-      return; // Anulowano lub nie zmieniono nazwy
+      return;
     }
 
     try {
-      // Krok 1: Aktualizacja w Supabase
       const { data: { user } } = await supabaseClient.auth.getUser();
       if (user) {
         const { error } = await supabaseClient.from('decks').update({ name: newName }).eq('id', deckId);
         if (error) throw error;
       }
 
-      // Krok 2: Aktualizacja w lokalnej bazie IndexedDB
       const store = getTransaction('decks', 'readwrite');
       const deck = await idbRequest(store.get(deckId));
       if (deck) {
@@ -1607,9 +1587,8 @@ async function renameDeck(deckId, oldName) {
       }
       
       console.log(`Deck ${deckId} renamed to "${newName}"`);
-      await renderDecksList(); // Odśwież widok listy
+      await renderDecksList();
       
-      // Jeśli zmieniono nazwę aktywnej talii, zaktualizuj też główny widok
       if(activeDeckId === deckId) {
         activeDeckNameEl.textContent = newName;
       }
@@ -1626,22 +1605,18 @@ async function renameDeck(deckId, oldName) {
     }
 
     try {
-      // Krok 1: Usunięcie z Supabase. ON DELETE CASCADE zajmie się resztą w chmurze.
       const { data: { user } } = await supabaseClient.auth.getUser();
       if (user) {
         const { error } = await supabaseClient.from('decks').delete().eq('id', deckId);
         if (error) throw error;
       }
 
-      // Krok 2: Usunięcie z lokalnej bazy IndexedDB
       const tx = db.transaction(['decks', 'words'], 'readwrite');
       const decksStore = tx.objectStore('decks');
       const wordsStore = tx.objectStore('words');
       
-      // Usuń talię
       await idbRequest(decksStore.delete(deckId));
       
-      // Usuń wszystkie słówka powiązane z tą talią
       const wordsIndex = wordsStore.index('deckId');
       const wordsToDelete = await idbRequest(wordsIndex.getAllKeys(deckId));
       for (const wordKey of wordsToDelete) {
@@ -1650,21 +1625,21 @@ async function renameDeck(deckId, oldName) {
 
       console.log(`Deck "${deckName}" and its words have been deleted.`);
       
-      // Jeśli usunięto aktywną talię, wyczyść stan aplikacji
       if (activeDeckId === deckId) {
         activeDeckId = null;
         await setAppData('activeDeckId', null);
         activeDeckNameEl.textContent = 'None';
-        startSession(); // Zresetuj widok nauki
+        startSession();
       }
 
-      await renderDecksList(); // Odśwież widok listy
+      await renderDecksList();
       
     } catch (error) {
       console.error('Error deleting deck:', error);
       alert('Could not delete the deck. Error: ' + error.message);
     }
   }
+
   async function renderDecksList() {
     await waitForDB();
     decksListEl.innerHTML = '<p class="text-center text-slate-500 p-4">Ładowanie talii...</p>';
@@ -1687,7 +1662,6 @@ async function renameDeck(deckId, oldName) {
       const deckEl = document.createElement('div');
       deckEl.className = `p-3 border-b border-slate-100 ${isActive ? 'bg-sky-50' : ''}`;
 
-      // NOWA, BARDZIEJ ROZBUDOWANA STRUKTURA HTML DLA KAŻDEJ TALII
       deckEl.innerHTML = `
         <div class="flex items-center justify-between">
           <div class="flex-grow min-w-0 pr-4">
@@ -1709,7 +1683,6 @@ async function renameDeck(deckId, oldName) {
         </div>
       `;
       
-      // DODANIE OBSŁUGI NOWYCH PRZYCISKÓW
       deckEl.querySelector('.select-deck-btn').addEventListener('click', async () => {
         closeModal(decksModal);
         await setActiveDeck(deck.id, deck.name);
@@ -1782,15 +1755,14 @@ async function renameDeck(deckId, oldName) {
     window.dispatchEvent(new Event('app:init-done'));
   }
   init();
-    document.addEventListener('visibilitychange', () => {
-      // Sprawdź, czy aplikacja nie jest ukryta (czyli stała się widoczna)
-      // i czy inicjalizacja już się zakończyła
-      if (document.visibilityState === 'visible' && appInitDone) {
-        reinitializeAppState();
-      }
-    });
 
-}); // To jest zamykający nawias dla DOMContentLoaded});
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && appInitDone) {
+      reinitializeAppState();
+    }
+  });
+
+}); // DOMContentLoaded end
   </script>
 
   <script>

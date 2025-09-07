@@ -197,7 +197,7 @@
         </form>
       </div>
       <div id="deck-details-view" class="p-4 border-t hidden">
-        <h3 class="font-bold mb-2">Words in deck: <span id="deck-details-name" class="text-sky-600"></span></h3>
+        <h3 class="font-bold mb-2">Słówka w talii: <span id="deck-details-name" class="text-sky-600"></span></h3>
         <div id="deck-details-words" class="max-h-48 overflow-y-auto border rounded-lg p-2 bg-slate-50"></div>
         <button id="open-add-word-modal-btn" class="w-full mt-4 bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm">Add Words to this Deck</button>
       </div>
@@ -377,6 +377,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const ENGLISH_ACCENT = 'en-GB';
 
+  // CONFIG: wyłączenie limitów dziennych
+  const REVIEW_IGNORE_DATE = true;   // true => pokaż wszystkie słowa do powtórki, niezależnie od daty
+  const DAILY_NEW_LIMIT = Infinity;  // Infinity => brak limitu nowych słów dziennie
+
   if (typeof initialWordList === 'undefined') {
     document.getElementById('loading-state').innerHTML = '<p class="text-red-500 font-bold">Error: Could not load word database. Make sure `words_db_en.js` is in the same folder.</p>';
     return;
@@ -472,6 +476,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getTransaction(storeName, mode = 'readonly') {
+    if (!db) {
+      throw new Error('[IndexedDB] DB not initialized yet. Call waitForDB() before using getTransaction.');
+    }
     return db.transaction(storeName, mode).objectStore(storeName);
   }
 
@@ -707,6 +714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function showDeckDetails(deck) {
+    await waitForDB();
     deckDetailsView.classList.remove('hidden');
     deckDetailsName.textContent = deck.name;
     const wordStore = getTransaction('words');
@@ -748,7 +756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               word.interval = progress.interval;
               word.easeFactor = progress.ease_factor;
               word.nextReview = progress.next_review;
-              word.learnedDate = progress.learned_date;
+              word.learnedDate = progress.learned_date || word.learnedDate || null;
             }
           });
           console.log(`Merged ${progressMap.size} progress records from cloud.`);
@@ -756,6 +764,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {
         console.error('Network or other error fetching progress:', e);
       }
+    }
+
+    // Normalizacja successCount (dla starszych rekordów)
+    const toUpdate = [];
+    for (const w of words) {
+      if (typeof w.successCount !== 'number') {
+        w.successCount = w.learnedDate ? 3 : 0;
+        toUpdate.push(w);
+      }
+    }
+    if (toUpdate.length > 0) {
+      const tx = db.transaction('words', 'readwrite');
+      const store = tx.objectStore('words');
+      toUpdate.forEach(w => store.put(w));
+      await new Promise(res => tx.oncomplete = res);
     }
   }
 
@@ -765,16 +788,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (difficulty === 1) {
       currentCard.interval = 0;
       reviewQueue.unshift(currentCard);
-    } else {
+    } else if (difficulty === 3) {
       currentCard.isLearning = false;
       currentCard.interval = Math.max(1, (currentCard.interval || 0) * (currentCard.easeFactor || 2.5));
-      if (!currentCard.learnedDate) {
-        currentCard.learnedDate = getToday().toISOString();
-        updateLearnedCount();
-      }
       currentCard.easeFactor = (currentCard.easeFactor || 2.5) + 0.1;
+      // Zliczanie zielonych kciuków
+      currentCard.successCount = (currentCard.successCount || 0) + 1;
+      if (currentCard.successCount === 3 && !currentCard.learnedDate) {
+        currentCard.learnedDate = getToday().toISOString(); // dla statystyk i historii
+        updateLearnedCount(); // odśwież licznik w UI
+      }
     }
-    currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval)).toISOString();
+
+    currentCard.nextReview = addDays(getToday(), Math.round(currentCard.interval || 0)).toISOString();
 
     const wordStore = getTransaction('words', 'readwrite');
     wordStore.put(currentCard);
@@ -790,7 +816,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         interval: currentCard.interval,
         ease_factor: currentCard.easeFactor,
         next_review: currentCard.nextReview,
-        learned_date: currentCard.learnedDate
+        learned_date: currentCard.learnedDate || null
       };
 
       try {
@@ -806,9 +832,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Krótka przerwa co 15 odpowiedzi (nie jest to limit dzienny)
+    // Przerwa co 100 (możesz usunąć jeśli chcesz bez zatrzymań)
     sessionWordCounter++;
-    if (sessionWordCounter > 0 && sessionWordCounter % 200 === 0 && (newQueue.length > 0 || reviewQueue.length > 0)) {
+    if (sessionWordCounter > 0 && sessionWordCounter % 100 === 0 && (newQueue.length > 0 || reviewQueue.length > 0)) {
       showSummary();
     } else {
       nextCard();
@@ -817,22 +843,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- UI FLOW & CARD DISPLAY ---
   function updateLearnedCount() {
-    const count = words.filter(w => w.learnedDate).length;
+    const count = words.filter(w => (w.successCount || 0) >= 3).length;
     learnedCountEl.textContent = count;
   }
 
   function buildQueues(reviewWords = null) {
     if (reviewWords) {
-      // Tryb przeglądu: wszystkie podane słowa jako kolejka "review"
+      // Pracujemy na kopii, żeby nie aliasować `words` (Start again)
       newQueue = [];
-      reviewQueue = reviewWords.sort(() => Math.random() - 0.5);
+      reviewQueue = [...reviewWords].sort(() => Math.random() - 0.5);
     } else {
       const today = getToday();
       const unlearnedWords = words.filter(w => !w.isLearning && w.interval === 0);
-      const dueForReview = words.filter(w => w.interval > 0 && new Date(w.nextReview) <= today);
+      const dueForReview = words.filter(w =>
+        w.interval > 0 && (REVIEW_IGNORE_DATE || new Date(w.nextReview) <= today)
+      );
 
-      // Brak limitu dziennego na nowe słowa – wrzucamy wszystkie dostępne
-      newQueue = unlearnedWords;
+      // Brak limitu dziennego na nowe słowa
+      newQueue = unlearnedWords.slice(0, DAILY_NEW_LIMIT);
       reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
     }
   }
@@ -877,9 +905,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let reviewCurrent = currentCard && currentCard.type === 'review' ? 1 : 0;
     newCountEl.textContent = newQueue.length + newCurrent;
     reviewCountEl.textContent = reviewQueue.length + reviewCurrent;
+    updateLearnedCount();
   }
 
-  // Jedyna definicja showSummary – z nową logiką i tekstami
   function showSummary() {
     learningState.classList.add('hidden');
     testState.classList.add('hidden');
@@ -891,16 +919,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const keepGoingBtn = document.getElementById('start-new-session-early');
 
     if (cardsRemaining) {
-      // Przerwa motywacyjna
       summaryText.textContent = "Masz świetną passę. Tak trzymaj!";
       keepGoingBtn.textContent = "Keep going!";
       keepGoingBtn.disabled = false;
       sessionCompleted = false;
     } else {
-      // Koniec sesji – cała talia „na dziś” skończona, ale pozwalamy zacząć od nowa
       summaryText.textContent = "Gratulacje! Ukończyłeś całą talię:)";
       keepGoingBtn.textContent = "Start again.";
-      keepGoingBtn.disabled = false; // przycisk aktywny
+      keepGoingBtn.disabled = false;
       sessionCompleted = true;
     }
   }
@@ -965,11 +991,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   showLearnedWordsBtn.addEventListener('click', async () => {
+    await waitForDB();
     learnedWordsList.innerHTML = '';
     const allWords = await idbRequest(getTransaction('words').getAll());
     const learned = allWords
-      .filter(w => w.learnedDate)
-      .sort((a,b) => new Date(a.learnedDate) - new Date(b.learnedDate));
+      .filter(w => (w.successCount || 0) >= 3)
+      .sort((a,b) => new Date(a.learnedDate || 0) - new Date(b.learnedDate || 0));
     if (learned.length === 0) {
       learnedWordsList.innerHTML = `<p class="text-slate-500 text-center p-4">You haven't learned any words yet. Keep learning!</p>`;
     } else {
@@ -982,12 +1009,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   showStatsBtn.addEventListener('click', async () => {
+    await waitForDB();
     const allWords = await idbRequest(getTransaction('words').getAll());
-    const learnedByDay = allWords.filter(w => w.learnedDate).reduce((acc, word) => {
-      const day = formatDate(new Date(word.learnedDate));
-      acc[day] = (acc[day] || 0) + 1;
-      return acc;
-    }, {});
+    const learnedByDay = allWords
+      .filter(w => (w.successCount || 0) >= 3 && w.learnedDate)
+      .reduce((acc, word) => {
+        const day = formatDate(new Date(word.learnedDate));
+        acc[day] = (acc[day] || 0) + 1;
+        return acc;
+      }, {});
     const sortedDays = Object.keys(learnedByDay).sort((a, b) => new Date(a) - new Date(b));
     if (statsChart) statsChart.destroy();
     statsChart = new Chart(statsChartCanvas, {
@@ -1021,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   addDeckForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    await waitForDB();
     const deckNameInput = document.getElementById('new-deck-name');
     const deckName = deckNameInput.value.trim();
     if (!deckName) return;
@@ -1049,6 +1080,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   addWordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    await waitForDB();
     const bulkInput = document.getElementById('bulk-words-input');
     const text = bulkInput.value.trim();
     if (!text || !activeDeckId) return;
@@ -1071,7 +1103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         easeFactor: 2.5,
         isLearning: false,
         learnedDate: null,
-        image: null
+        image: null,
+        successCount: 0
       });
     }
 
@@ -1105,15 +1138,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   speakBtnFront.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.english, ENGLISH_ACCENT, 1.0); });
   speakBtnBack.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.example_en, ENGLISH_ACCENT, 1.0); });
 
-  // Start again / Keep going logika
+  // Start again / Keep going logika (Start again na kopii `words`)
   startNewSessionEarlyBtn.addEventListener('click', () => {
     if (sessionCompleted) {
-      // Restart całej talii: ponowna sesja z całą talią w trybie "review"
-      // (ignoruje limity dzienne – przegląd wszystkich fiszek)
       summaryState.classList.add('hidden');
-      startSession(words);
+      startSession([...words]); // kluczowe: użycie kopii
     } else {
-      // Kontynuacja po przerwie
       summaryState.classList.add('hidden');
       learningState.classList.remove('hidden');
       nextCard();
@@ -1132,15 +1162,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Review/Test przyciski – z kierunkiem testu
   document.querySelectorAll('.review-btn-learn, .review-btn-test').forEach(btn => {
     btn.addEventListener('click', async () => {
+      await waitForDB();
       const type = btn.dataset.type;
       const count = btn.dataset.count ? parseInt(btn.dataset.count, 10) : null;
-      const allLearnedWords = (await idbRequest(getTransaction('words').getAll())).filter(w => w.learnedDate);
+      const allLearnedWords = (await idbRequest(getTransaction('words').getAll())).filter(w => (w.successCount || 0) >= 3);
       let wordsToReview = [];
       if (type === 'last' && count) {
-        wordsToReview = allLearnedWords.sort((a,b) => new Date(b.learnedDate) - new Date(a.learnedDate)).slice(0, count);
+        wordsToReview = allLearnedWords.sort((a,b) => new Date(b.learnedDate || 0) - new Date(a.learnedDate || 0)).slice(0, count);
       } else if (type === 'today') {
         const todayStr = formatDate(getToday());
-        wordsToReview = allLearnedWords.filter(w => formatDate(new Date(w.learnedDate)) === todayStr);
+        wordsToReview = allLearnedWords.filter(w => w.learnedDate && formatDate(new Date(w.learnedDate)) === todayStr);
       }
       const isTest = btn.classList.contains('review-btn-test');
       if (wordsToReview.length < (isTest ? 4 : 1)) {
@@ -1259,6 +1290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   showStoriesBtn.addEventListener('click', async () => {
+    await waitForDB();
     const store = getTransaction('user_stories');
     const stories = await idbRequest(store.getAll());
     storiesListEl.innerHTML = '';
@@ -1310,7 +1342,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     storiesListEl.appendChild(storyEl);
   }
 
-  addStoryBtn.addEventListener('click', () => storyUploadInput.click());
+  const addStoryBtnEl = document.getElementById('add-story-btn');
+  addStoryBtnEl.addEventListener('click', () => storyUploadInput.click());
 
   storyUploadInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
@@ -1567,6 +1600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function renameDeck(deckId, oldName) {
+    await waitForDB();
     const newName = prompt('Enter the new name for the deck:', oldName);
     if (!newName || newName.trim() === '' || newName === oldName) {
       return;
@@ -1600,6 +1634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function deleteDeck(deckId, deckName) {
+    await waitForDB();
     if (!confirm(`Are you sure you want to permanently delete the deck "${deckName}" and all its words? This cannot be undone.`)) {
       return;
     }
@@ -1653,11 +1688,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const wordsIndex = getTransaction('words').index('deckId');
     for (const deck of decks) {
-      let count = 0;
+      let wordsInDeck = [];
       try {
-        count = await idbRequest(wordsIndex.count(deck.id));
+        wordsInDeck = await idbRequest(wordsIndex.getAll(deck.id));
       } catch (_) {}
-      
+
+      // policz łącznie i nauczone (successCount >= 3)
+      const count = wordsInDeck.length;
+      const mastered = wordsInDeck.filter(w => (w.successCount || 0) >= 3).length;
+
       const isActive = deck.id === activeDeckId;
       const deckEl = document.createElement('div');
       deckEl.className = `p-3 border-b border-slate-100 ${isActive ? 'bg-sky-50' : ''}`;
@@ -1666,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="flex items-center justify-between">
           <div class="flex-grow min-w-0 pr-4">
             <p class="font-bold truncate ${isActive ? 'text-sky-600' : ''}">${deck.name}</p>
-            <p class="text-sm text-slate-500">${count} words</p>
+            <p class="text-sm text-slate-500">${count} słówek • <span class="text-green-600 font-semibold">${mastered}</span> nauczonych</p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button title="Zmień nazwę" class="rename-btn p-2 text-slate-500 hover:text-sky-600 transition-colors" data-deck-id="${deck.id}" data-deck-name="${deck.name}">
@@ -1727,7 +1766,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const addRequest = deckStore.add({ name: 'English Starter Deck' });
       currentDeckId = await idbRequest(addRequest);
       const wordPromises = initialWordList.map(word => {
-        const wordData = { ...word, deckId: currentDeckId, interval: 0, nextReview: getToday().toISOString(), easeFactor: 2.5, isLearning: false, learnedDate: null, image: null };
+        const wordData = {
+          ...word,
+          deckId: currentDeckId,
+          interval: 0,
+          nextReview: getToday().toISOString(),
+          easeFactor: 2.5,
+          isLearning: false,
+          learnedDate: null,
+          image: null,
+          successCount: 0
+        };
         delete wordData.id;
         return idbRequest(wordStore.add(wordData));
       });

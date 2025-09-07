@@ -89,13 +89,14 @@
         <p class="text-slate-500">Loading application and database...</p>
       </div>
 
-      <div id="summary-state" class="hidden text-center bg-white p-8 rounded-2xl shadow-lg">
-        <h2 class="text-2xl font-bold mb-4">Great work!</h2>
-        <p class="text-slate-600 mb-6">You've completed today's session. Come back tomorrow for more reviews.</p>
-        <button id="start-new-session-early" class="w-full bg-sky-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-sky-600 transition-colors">
-          I want to keep learning
-        </button>
+     <div id="summary-state" class="hidden text-center bg-white p-8 rounded-2xl shadow-lg">
+      <h2 class="text-2xl font-bold mb-4">Great work!</h2>
+      <p class="text-slate-600 mb-6">Masz świetną passę. Tak trzymaj!</p>
+      <div class="flex flex-col gap-3">
+        <button id="start-new-session-early" ...> ... </button>
+        <button id="repeat-today-btn" ...> ... </button>
       </div>
+    </div>
 
       <div id="learning-state" class="hidden">
         <div class="flex justify-between items-center mb-4 text-sm">
@@ -372,7 +373,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log('Supabase client initialized successfully.');
 
-  const NEW_WORDS_PER_DAY = 10;
   const ENGLISH_ACCENT = 'en-GB';
 
   if (typeof initialWordList === 'undefined') {
@@ -594,6 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let testWords = [];
   let currentTestQuestionIndex = 0;
   let testScore = 0;
+  let sessionWordCounter = 0;
 
   // --- Active deck helpers ---
   async function ensureLocalDeckRecord(id, name) {
@@ -762,9 +763,17 @@ async function loadWordsForActiveDeck() {
             console.error('Network or other error fetching progress:', e);
         }
     }
-    
-    updateLearnedCount();
-}
+     // --- POCZĄTEK ZMIAN ---
+    sessionWordCounter++; // Zwiększamy licznik po każdej odpowiedzi
+
+    // Sprawdzamy, czy licznik osiągnął 15 (lub wielokrotność) i czy są jeszcze słówka w kolejce
+    if (sessionWordCounter > 0 && sessionWordCounter % 15 === 0 && (newQueue.length > 0 || reviewQueue.length > 0)) {
+      showSummary(); // Pokaż ekran przerwy
+    } else {
+      nextCard(); // Przejdź do następnej karty
+    }
+    // --- KONIEC ZMIAN ---
+  }
 
 async function processAnswer(difficulty) {
     if (!currentCard) return;
@@ -832,9 +841,9 @@ async function processAnswer(difficulty) {
     } else {
       const today = getToday();
       const unlearnedWords = words.filter(w => !w.isLearning && w.interval === 0);
-      const dueForReview = words.filter(w => w.interval > 0 && new Date(w.nextReview) <= today);
-      newQueue = unlearnedWords.slice(0, NEW_WORDS_PER_DAY);
-      reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
+const dueForReview = words.filter(w => w.interval > 0 && new Date(w.nextReview) <= today);
+newQueue = unlearnedWords; // Usunięcie limitu - dodajemy wszystkie dostępne nowe słówka
+reviewQueue = dueForReview.sort(() => Math.random() - 0.5);
     }
   }
 
@@ -871,7 +880,7 @@ async function processAnswer(difficulty) {
     cardExamplePlEl.textContent = currentCard.example_pl;
     cardImageEl.src = currentCard.image || "";
     cardImageEl.style.display = currentCard.image ? 'block' : 'none';
-    setTimeout(() => speak(currentCard.english, ENGLISH_ACCENT, 1.0), 200);
+    // setTimeout(() => speak(currentCard.english, ENGLISH_ACCENT, 1.0), 200);
   }
 
   function updateCounts() {
@@ -886,9 +895,27 @@ async function processAnswer(difficulty) {
     testState.classList.add('hidden');
     testSummaryState.classList.add('hidden');
     summaryState.classList.remove('hidden');
+
+    // NOWA INTELIGENTNA LOGIKA: Sprawdzamy, czy to przerwa, czy koniec sesji
+    const cardsRemaining = newQueue.length > 0 || reviewQueue.length > 0;
+    const summaryText = document.querySelector('#summary-state p');
+    const keepGoingBtn = document.getElementById('start-new-session-early');
+
+    if (cardsRemaining) {
+      // Jeśli są jeszcze karty - to jest tylko przerwa motywacyjna
+      summaryText.textContent = "Masz świetną passę. Tak trzymaj!";
+      keepGoingBtn.textContent = "Keep going!";
+      keepGoingBtn.disabled = false;
+    } else {
+      // Jeśli nie ma już kart - to jest prawdziwy koniec sesji
+      summaryText.textContent = "Gratulacje! Ukończyłeś wszystkie dostępne fiszki na dziś.";
+      keepGoingBtn.textContent = "Wszystko na dziś!";
+      keepGoingBtn.disabled = true; // Wyłączamy przycisk, aby zapobiec pętli
+    }
   }
 
-  function startSession(reviewWords = null) {
+    function startSession(reviewWords = null) {
+    sessionWordCounter = 0;
     learningState.classList.remove('hidden');
     testState.classList.add('hidden');
     testSummaryState.classList.add('hidden');
@@ -966,7 +993,29 @@ async function processAnswer(difficulty) {
     learnedWordsCountEl.textContent = learned.length;
     openModal(learnedWordsModal);
   });
+function showSummary() {
+    learningState.classList.add('hidden');
+    testState.classList.add('hidden');
+    testSummaryState.classList.add('hidden');
+    summaryState.classList.remove('hidden');
 
+    // NOWA INTELIGENTNA LOGIKA: Sprawdzamy, czy to przerwa, czy koniec sesji
+    const cardsRemaining = newQueue.length > 0 || reviewQueue.length > 0;
+    const summaryText = document.querySelector('#summary-state p');
+    const keepGoingBtn = document.getElementById('start-new-session-early');
+
+    if (cardsRemaining) {
+      // Jeśli są jeszcze karty - to jest tylko przerwa motywacyjna
+      summaryText.textContent = "Masz świetną passę. Tak trzymaj!";
+      keepGoingBtn.textContent = "Keep going!";
+      keepGoingBtn.disabled = false;
+    } else {
+      // Jeśli nie ma już kart - to jest prawdziwy koniec sesji
+      summaryText.textContent = "Gratulacje! Ukończyłeś wszystkie dostępne fiszki na dziś.";
+      keepGoingBtn.textContent = "Wszystko na dziś!";
+      keepGoingBtn.disabled = true; // Wyłączamy przycisk, aby zapobiec pętli
+    }
+  }
   showStatsBtn.addEventListener('click', async () => {
     const allWords = await idbRequest(getTransaction('words').getAll());
     const learnedByDay = allWords.filter(w => w.learnedDate).reduce((acc, word) => {
@@ -1091,16 +1140,10 @@ async function processAnswer(difficulty) {
   speakBtnFront.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.english, ENGLISH_ACCENT, 1.0); });
   speakBtnBack.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.example_en, ENGLISH_ACCENT, 1.0); });
 
-  startNewSessionEarlyBtn.addEventListener('click', async () => {
-    const tomorrow = addDays(getToday(), 1);
-    const wordStore = getTransaction('words', 'readwrite');
-    const wordsToUpdate = words.filter(word => new Date(word.nextReview) > getToday() && new Date(word.nextReview) <= tomorrow);
-    wordsToUpdate.forEach(word => {
-      word.nextReview = getToday().toISOString();
-      wordStore.put(word);
-    });
-    await loadWordsForActiveDeck();
-    startSession();
+ startNewSessionEarlyBtn.addEventListener('click', () => {
+    summaryState.classList.add('hidden'); // Ukryj ekran przerwy
+    learningState.classList.remove('hidden'); // Pokaż ekran nauki
+    nextCard(); // Załaduj kolejną fiszkę
   });
 
   resetProgressBtn.addEventListener('click', async () => {

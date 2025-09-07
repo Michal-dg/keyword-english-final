@@ -701,7 +701,7 @@ async function loadWordsForActiveDeck() {
     if (user && words.length > 0) {
         try {
             const { data: progressRecords, error } = await supabaseClient
-                .from('user_word_progresss')
+                .from('user_word_progress')
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('deck_id', activeDeckId);
@@ -770,7 +770,7 @@ async function processAnswer(difficulty) {
         try {
             // ZMIANA: Aktualizujemy 'onConflict' na nowy unikalny klucz
             const { error } = await supabaseClient
-                .from('user_word_progresss')
+                .from('user_word_progress')
                 .upsert(progressData, { onConflict: 'user_id, word_english' });
 
             if (error) {

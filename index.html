@@ -1050,55 +1050,16 @@ async function processAnswer(difficulty) {
   speakBtnBack.addEventListener('click', (e) => { e.stopPropagation(); if (currentCard) speak(currentCard.example_en, ENGLISH_ACCENT, 1.0); });
 
   startNewSessionEarlyBtn.addEventListener('click', async () => {
-    console.log('Starting early session...');
-    const allWordsFromDB = await idbRequest(getTransaction('words').getAll());
-    
-    const futureReviewWords = allWordsFromDB
-        .filter(word => word.learnedDate && new Date(word.nextReview) > getToday())
-        .sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
-
-    // Sprawdzamy, czy są słówka z zaplanowaną powtórką w przyszłości
-    if (futureReviewWords.length > 0) {
-        // --- SCENARIUSZ 1: SĄ SŁÓWKA W PRZYSZŁOŚCI ---
-        // Bierzemy 10 najwcześniejszych słówek i przyspieszamy ich powtórkę
-        const wordsToPullForward = futureReviewWords.slice(0, 10);
-        console.log(`Pulling ${wordsToPullForward.length} words from the future for review.`);
-
-        const wordStore = getTransaction('words', 'readwrite');
-        for (const word of wordsToPullForward) {
-            word.nextReview = getToday().toISOString();
-            wordStore.put(word);
-        }
-        await new Promise(resolve => wordStore.transaction.oncomplete = resolve);
-
-    } else {
-        // --- SCENARIUSZ 2: NIE MA SŁÓWEK W PRZYSZŁOŚCI ---
-        // Tworzymy sesję powtórkową z ostatnio nauczonych słówek
-        console.log('No future reviews. Creating a review session from the last 20 learned words.');
-        
-        const allLearnedWords = allWordsFromDB
-            .filter(word => word.learnedDate)
-            .sort((a, b) => new Date(b.learnedDate) - new Date(a.learnedDate)); // Sortuj od najnowszych
-
-        if (allLearnedWords.length === 0) {
-            // Prawdziwy przypadek brzegowy: użytkownik nie nauczył się jeszcze NICZEGO
-            alert("Nie nauczyłeś się jeszcze żadnych słówek! Ucz się nowych, aby zbudować listę powtórek.");
-            return;
-        }
-
-        // Bierzemy do 20 ostatnio nauczonych słówek
-        const lastLearnedToReview = allLearnedWords.slice(0, 20);
-        console.log(`Starting a review of the last ${lastLearnedToReview.length} learned words.`);
-        
-        // Rozpoczynamy sesję z tą konkretną, wyselekcjonowaną listą słówek
-        startSession(lastLearnedToReview);
-        return; // Zakończ, aby nie wykonać kodu poniżej
-    }
-
-    // Ten kod wykona się tylko dla Scenariusza 1
+    const tomorrow = addDays(getToday(), 1);
+    const wordStore = getTransaction('words', 'readwrite');
+    const wordsToUpdate = words.filter(word => new Date(word.nextReview) > getToday() && new Date(word.nextReview) <= tomorrow);
+    wordsToUpdate.forEach(word => {
+      word.nextReview = getToday().toISOString();
+      wordStore.put(word);
+    });
     await loadWordsForActiveDeck();
     startSession();
-});
+  });
 
   resetProgressBtn.addEventListener('click', async () => {
     if (confirm('Are you sure you want to reset all your progress? This is irreversible.')) {

@@ -599,6 +599,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let sessionWordCounter = 0;
   let sessionCompleted = false; // flaga do kontroli stanu sesji (koniec/przerwa)
   let testDirection = 'en2pl'; // en2pl | pl2en
+  let deckDetailsCurrentId = null;
 
   // --- Active deck helpers ---
   async function ensureLocalDeckRecord(id, name) {
@@ -714,16 +715,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function showDeckDetails(deck) {
-    await waitForDB();
-    deckDetailsView.classList.remove('hidden');
-    deckDetailsName.textContent = deck.name;
-    const wordStore = getTransaction('words');
-    const index = wordStore.index('deckId');
-    const wordsInDeck = await idbRequest(index.getAll(deck.id));
-    deckDetailsWords.innerHTML = wordsInDeck.length > 0
-      ? wordsInDeck.map(w => `<div class="text-sm py-1">${w.english} - ${w.polish}</div>`).join('')
-      : '<p class="text-slate-500 text-sm">No words in this deck.</p>';
-  }
+  await waitForDB();
+  deckDetailsView.classList.remove('hidden');
+  deckDetailsName.textContent = deck.name;
+  deckDetailsCurrentId = deck.id; // <-- KLUCZOWA ZMIANA: Zapamiętujemy ID przeglądanej talii
+  const wordStore = getTransaction('words');
+  const index = wordStore.index('deckId');
+  const wordsInDeck = await idbRequest(index.getAll(deck.id));
+  deckDetailsWords.innerHTML = wordsInDeck.length > 0
+    ? wordsInDeck.map(w => `<div class="text-sm py-1">${w.english} - ${w.polish}</div>`).join('')
+    : '<p class="text-slate-500 text-sm">No words in this deck.</p>';
+}
 
   // --- WORD MANAGEMENT & SRS LOGIC ---
   async function loadWordsForActiveDeck() {
@@ -1085,6 +1087,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const text = bulkInput.value.trim();
     if (!text || !activeDeckId) return;
 
+    const targetDeckId = deckDetailsCurrentId; 
+  if (!text || !targetDeckId) {
+      alert("Error: No target deck selected for adding words.");
+      return;
+  }
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
     const newWords = [];
 
@@ -1096,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       const [english, polish, example_en = '', example_pl = ''] = parts;
       newWords.push({
-        deckId: activeDeckId,
+        deckId: targetDeckId, 
         english, polish, example_en, example_pl,
         interval: 0,
         nextReview: getToday().toISOString(),

@@ -1085,8 +1085,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await waitForDB();
     const bulkInput = document.getElementById('bulk-words-input');
     const text = bulkInput.value.trim();
-    if (!text || !activeDeckId) return;
-
     const targetDeckId = deckDetailsCurrentId; 
   if (!text || !targetDeckId) {
       alert("Error: No target deck selected for adding words.");
